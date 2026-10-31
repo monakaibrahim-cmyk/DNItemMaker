@@ -1,0 +1,35 @@
+# EditorConfig for combined C and C++ projects
+root = true
+
+# Global configurations
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C and C++ Source and Header files
+[*.{c,cpp,cc,cxx,h,hpp,hh,hxx,inl}]
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 100
+
+# Assembly files (frequently used in low-level C projects)
+[*.{s,S,asm}]
+indent_style = tab
+indent_size = 8
+
+# Build Configurations (CMake)
+[CMakeLists.txt, *.cmake]
+indent_style = space
+indent_size = 2
+
+# Build Configurations (Makefiles - strictly require hardware tabs)
+[Makefile, *.mk]
+indent_style = tab
+tab_width = 8
+
+# Documentation
+[*.md]
+trim_trailing_whitespace = false

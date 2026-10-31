@@ -1,0 +1,36 @@
+---
+Checks: >
+  -*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  clang-analyzer-*,
+  -cppcoreguidelines-macro-usage,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-naming
+WarningsAsErrors: ''
+HeaderFileExtensions:
+  - ''
+  - h
+  - hh
+  - hpp
+  - hxx
+ImplementationFileExtensions:
+  - c
+  - cc
+  - cpp
+  - cxx
+HeaderFilterRegex: '^(?!.*(Windows Kits|Microsoft Visual Studio|external)).*'
+ExtraArgs:
+  - "-fms-compatibility"
+  - "-fms-extensions"
+  - "-fdelayed-template-parsing"
+ExcludeHeaderFilterRegex: ''
+FormatStyle:     none
+User:            Canonical
+CheckOptions:    {}
+SystemHeaders:   false
+...
+

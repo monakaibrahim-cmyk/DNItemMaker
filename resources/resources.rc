@@ -1,0 +1,39 @@
+#include <winresrc.h>
+#include "version.h"
+
+// Application Icon
+IDI_APP_ICON ICON "app.ico"
+
+// Windows Executable Version Information
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION    VERSION_MAJOR,VERSION_MINOR,VERSION_PATCH,VERSION_BUILD
+PRODUCTVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_PATCH,VERSION_BUILD
+FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+FILEFLAGS      VS_FF_DEBUG
+#else
+FILEFLAGS      0x0L
+#endif
+FILEOS         VOS_NT_WINDOWS32
+FILETYPE       VFT_APP
+FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName",      COMPANY_NAME "\0"
+            VALUE "FileDescription",  FILE_DESCRIPTION "\0"
+            VALUE "FileVersion",      VERSION_STRING "\0"
+            VALUE "InternalName",     APP_NAME_SHORT "\0"
+            VALUE "LegalCopyright",   LEGAL_COPYRIGHT "\0"
+            VALUE "OriginalFilename", ORIGINAL_FILENAME "\0"
+            VALUE "ProductName",      APP_NAME "\0"
+            VALUE "ProductVersion",   VERSION_STRING "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

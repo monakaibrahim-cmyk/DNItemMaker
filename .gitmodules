@@ -1,0 +1,6 @@
+[submodule "extern/zlib"]
+	path = extern/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "extern/SQLiteCpp"]
+	path = extern/SQLiteCpp
+	url = https://github.com/SRombauts/SQLiteCpp.git

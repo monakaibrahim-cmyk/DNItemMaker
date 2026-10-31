@@ -1,0 +1,70 @@
+#pragma once
+
+/**
+ * @file DDSParser.h
+ * @brief High-performance software decoder for DirectDraw Surface (.dds) textures.
+ *
+ * Provides pure software decompression for compressed block formats (DXT1/BC1, DXT5/BC3)
+ * and uncompressed 32-bit RGBA formats without requiring DirectX, Direct3D, or GPU runtime
+ * dependencies. Used for decoding Dragon Nest UI icon atlases and 3D model diffuse/emissive textures.
+ */
+
+#include <cstdint>
+#include <filesystem>
+#include <string>
+#include <vector>
+
+namespace DNItemMaker::Graphics {
+
+/**
+ * @brief In-memory raw 32-bit RGBA pixel buffer.
+ */
+struct ImageBuffer {
+    uint32_t width = 0;             ///< Image width in pixels.
+    uint32_t height = 0;            ///< Image height in pixels.
+    std::vector<uint8_t> rgbaData;  ///< Contiguous 32-bit RGBA pixel data (size = width * height * 4).
+};
+
+/**
+ * @class DDSParser
+ * @brief Static utility class for decoding DDS files and extracting atlas sub-rectangles.
+ */
+class DDSParser {
+public:
+    DDSParser() = default;
+    ~DDSParser() = default;
+
+    /**
+     * @brief Decodes a .dds file from disk into a 32-bit RGBA pixel buffer.
+     * @param filePath Filesystem path to the .dds file.
+     * @param outImage Destination ImageBuffer receiving decoded pixels.
+     * @return true on success, false on unsupported format or I/O failure.
+     */
+    static bool DecodeFile(const std::filesystem::path& filePath, ImageBuffer& outImage);
+
+    /**
+     * @brief Decodes a .dds file directly from a raw memory buffer.
+     * @param data Pointer to DDS file memory bytes.
+     * @param size Length of memory buffer in bytes.
+     * @param outImage Destination ImageBuffer receiving decoded pixels.
+     * @return true on success, false on invalid header or corrupt data.
+     */
+    static bool DecodeMemory(const uint8_t* data, size_t size, ImageBuffer& outImage);
+
+    /**
+     * @brief Crops a single 2D icon tile from an atlas grid by its 0-based index.
+     * @param atlas Decoded source atlas image buffer.
+     * @param tileIndex 0-based icon tile index within the grid.
+     * @param tileWidth Width in pixels of each icon cell (typically 50px).
+     * @param tileHeight Height in pixels of each icon cell (typically 50px).
+     * @param outTile Destination ImageBuffer receiving cropped icon pixels.
+     * @return true if successfully extracted, false if tile index is out of bounds.
+     */
+    static bool CropIconTile(const ImageBuffer& atlas, int tileIndex, int tileWidth, int tileHeight, ImageBuffer& outTile);
+
+private:
+    static void DecompressDXT1Block(const uint8_t* block, uint32_t* dest, uint32_t stride);
+    static void DecompressDXT5Block(const uint8_t* block, uint32_t* dest, uint32_t stride);
+};
+
+} // namespace DNItemMaker::Graphics
