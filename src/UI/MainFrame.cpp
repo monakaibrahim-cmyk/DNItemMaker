@@ -118,6 +118,14 @@ enum ControlIds : UINT {
     IDC_CHK_CLASS_ALL = 42040,
     IDC_CHK_CLASS_BASE_FIRST = 42041,
     IDC_CHK_CLASS_LAST = 42050,
+    IDC_TREE_SUBCLASSES = 42051,
+    IDC_BTN_SUBCLASS_ALL_1ST = 42052,
+    IDC_BTN_SUBCLASS_ALL_2ND = 42053,
+    IDC_BTN_SUBCLASS_CLEAR = 42054,
+    IDC_BTN_SUBCLASS_EXPAND = 42055,
+    ID_CMD_SUBCLASS_CHECK_BRANCH = 42056,
+    ID_CMD_SUBCLASS_UNCHECK_BRANCH = 42057,
+    ID_CMD_SUBCLASS_TOGGLE_EXPAND = 42058,
     IDC_BTN_FORK_MIDS = 42060,
     IDC_BTN_GEN_TOOLTIP,
     IDC_EDIT_NAME_MID,
@@ -222,7 +230,129 @@ enum ControlIds : UINT {
 
 constexpr const wchar_t* kBaseClassLabels[10] = {
     L"1 Warrior", L"2 Archer", L"3 Sorceress", L"4 Cleric", L"5 Academic",
-    L"6 Kali",    L"7 Assassin", L"8 Lencea",  L"9 Machina", L"10 Vandar"
+    L"6 Kali",    L"7 Assassin", L"8 Lancea",  L"9 Machina", L"201 Vandar"
+};
+constexpr int32_t kBaseClassIds[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 201 };
+
+struct ClassNodeInfo {
+    int32_t jobId;
+    int32_t parentId; // 0 for base classes, or parent's jobId
+    int32_t baseId;
+    int tier;         // 0 = Base, 1 = 1st Spec, 2 = 2nd Spec
+    const wchar_t* name;
+};
+
+constexpr ClassNodeInfo kDNClassHierarchy[] = {
+    // === Warrior (1) ===
+    { 1, 0, 1, 0, L"Warrior" },
+    { 11, 1, 1, 1, L"Swordmaster" },
+    { 23, 11, 1, 2, L"Gladiator" },
+    { 24, 11, 1, 2, L"Moonlord" },
+    { 12, 1, 1, 1, L"Mercenary" },
+    { 25, 12, 1, 2, L"Barbarian" },
+    { 26, 12, 1, 2, L"Destroyer" },
+    { 75, 1, 1, 1, L"Avenger" },
+    { 76, 75, 1, 2, L"Dark Avenger" },
+    { 106, 1, 1, 1, L"Knight" },
+    { 107, 106, 1, 2, L"Mystic Knight" },
+    { 108, 106, 1, 2, L"Grand Master" },
+
+    // === Archer (2) ===
+    { 2, 0, 2, 0, L"Archer" },
+    { 14, 2, 2, 1, L"Bowmaster" },
+    { 29, 14, 2, 2, L"Sniper" },
+    { 30, 14, 2, 2, L"Artillery" },
+    { 15, 2, 2, 1, L"Acrobat" },
+    { 31, 15, 2, 2, L"Tempest" },
+    { 32, 15, 2, 2, L"Wind Walker" },
+    { 80, 2, 2, 1, L"Hunter" },
+    { 81, 80, 2, 2, L"Silver Hunter" },
+
+    // === Sorceress (3) ===
+    { 3, 0, 3, 0, L"Sorceress" },
+    { 17, 3, 3, 1, L"Elemental Lord" },
+    { 35, 17, 3, 2, L"Saleana" },
+    { 36, 17, 3, 2, L"Elestra" },
+    { 18, 3, 3, 1, L"Force User" },
+    { 37, 18, 3, 2, L"Smasher" },
+    { 38, 18, 3, 2, L"Majesty" },
+    { 84, 3, 3, 1, L"Mara" },
+    { 85, 84, 3, 2, L"Black Mara" },
+
+    // === Cleric (4) ===
+    { 4, 0, 4, 0, L"Cleric" },
+    { 20, 4, 4, 1, L"Paladin" },
+    { 41, 20, 4, 2, L"Guardian" },
+    { 42, 20, 4, 2, L"Crusader" },
+    { 22, 4, 4, 1, L"Priest" },
+    { 43, 22, 4, 2, L"Saint" },
+    { 44, 22, 4, 2, L"Inquisitor" },
+    { 82, 4, 4, 1, L"Heretic" },
+    { 83, 82, 4, 2, L"Arch Heretic" },
+
+    // === Academic (5) ===
+    { 5, 0, 5, 0, L"Academic" },
+    { 46, 5, 5, 1, L"Engineer" },
+    { 47, 46, 5, 2, L"Shooting Star" },
+    { 48, 46, 5, 2, L"Gear Master" },
+    { 49, 5, 5, 1, L"Alchemist" },
+    { 50, 49, 5, 2, L"Adept" },
+    { 51, 49, 5, 2, L"Physician" },
+    { 86, 5, 5, 1, L"Mechanic" },
+    { 87, 86, 5, 2, L"Ray Mechanic" },
+
+    // === Kali (6) ===
+    { 6, 0, 6, 0, L"Kali" },
+    { 54, 6, 6, 1, L"Screamer" },
+    { 55, 54, 6, 2, L"Dark Summoner" },
+    { 56, 54, 6, 2, L"Soul Eater" },
+    { 57, 6, 6, 1, L"Dancer" },
+    { 58, 57, 6, 2, L"Blade Dancer" },
+    { 59, 57, 6, 2, L"Spirit Dancer" },
+    { 88, 6, 6, 1, L"Oracle" },
+    { 89, 88, 6, 2, L"Oracle Elder" },
+
+    // === Assassin (7) ===
+    { 7, 0, 7, 0, L"Assassin" },
+    { 62, 7, 7, 1, L"Chaser" },
+    { 63, 62, 7, 2, L"Ripper" },
+    { 64, 62, 7, 2, L"Raven" },
+    { 67, 7, 7, 1, L"Bringer" },
+    { 68, 67, 7, 2, L"Light Fury" },
+    { 69, 67, 7, 2, L"Abyss Walker" },
+    { 90, 7, 7, 1, L"Phantom" },
+    { 91, 90, 7, 2, L"Bleed Phantom" },
+
+    // === Lancea (8) ===
+    { 8, 0, 8, 0, L"Lancea" },
+    { 72, 8, 8, 1, L"Piercer" },
+    { 73, 72, 8, 2, L"Flurry" },
+    { 74, 72, 8, 2, L"Sting Breezer" },
+    { 92, 8, 8, 1, L"Knightess" },
+    { 93, 92, 8, 2, L"Avalanche" },
+    { 94, 92, 8, 2, L"Randgrid" },
+    { 98, 8, 8, 1, L"Plaga" },
+    { 99, 98, 8, 2, L"Vena Plaga" },
+
+    // === Machina (9) ===
+    { 9, 0, 9, 0, L"Machina" },
+    { 77, 9, 9, 1, L"Patrona" },
+    { 78, 77, 9, 2, L"Defensio" },
+    { 79, 77, 9, 2, L"Ruina" },
+    { 95, 9, 9, 1, L"Launcher" },
+    { 96, 95, 9, 2, L"Impactor" },
+    { 97, 95, 9, 2, L"Luster" },
+    { 109, 9, 9, 1, L"Beastia" },
+    { 110, 109, 9, 2, L"Beastia Reina" },
+
+    // === Vandar (201) ===
+    { 201, 0, 201, 0, L"Vandar" },
+    { 100, 201, 201, 1, L"Treasure Hunter" },
+    { 102, 100, 201, 2, L"Duelist" },
+    { 103, 100, 201, 2, L"Trickster" },
+    { 101, 201, 201, 1, L"Wanderer" },
+    { 104, 101, 201, 2, L"Revenant" },
+    { 105, 101, 201, 2, L"Maverick" },
 };
 
 bool PickFolderDialog(HWND owner, const std::filesystem::path& initialDir, std::filesystem::path& outFolder) {
@@ -517,6 +647,16 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
     ON_EN_CHANGE(IDC_EDIT_ICON_INDEX, &CMainFrame::OnIconIndexEditChanged)
     ON_EN_CHANGE(IDC_EDIT_JOBS, &CMainFrame::OnJobsEditChanged)
     ON_CONTROL_RANGE(BN_CLICKED, IDC_CHK_CLASS_ALL, IDC_CHK_CLASS_LAST, &CMainFrame::OnClassMatrixClicked)
+    ON_NOTIFY(NM_CLICK, IDC_TREE_SUBCLASSES, &CMainFrame::OnSubclassTreeClick)
+    ON_NOTIFY(TVN_KEYDOWN, IDC_TREE_SUBCLASSES, &CMainFrame::OnSubclassTreeKeyDown)
+    ON_NOTIFY(NM_RCLICK, IDC_TREE_SUBCLASSES, &CMainFrame::OnSubclassTreeRClick)
+    ON_BN_CLICKED(IDC_BTN_SUBCLASS_ALL_1ST, &CMainFrame::OnSubclassAll1st)
+    ON_BN_CLICKED(IDC_BTN_SUBCLASS_ALL_2ND, &CMainFrame::OnSubclassAll2nd)
+    ON_BN_CLICKED(IDC_BTN_SUBCLASS_CLEAR, &CMainFrame::OnSubclassClear)
+    ON_BN_CLICKED(IDC_BTN_SUBCLASS_EXPAND, &CMainFrame::OnSubclassToggleExpand)
+    ON_COMMAND(ID_CMD_SUBCLASS_CHECK_BRANCH, &CMainFrame::OnSubclassCheckBranch)
+    ON_COMMAND(ID_CMD_SUBCLASS_UNCHECK_BRANCH, &CMainFrame::OnSubclassUncheckBranch)
+    ON_COMMAND(ID_CMD_SUBCLASS_TOGGLE_EXPAND, &CMainFrame::OnSubclassToggleExpand)
     ON_BN_CLICKED(IDC_BTN_AUTO_SELL, &CMainFrame::OnAutoCalcSell)
     ON_BN_CLICKED(IDC_BTN_AUTO_GS, &CMainFrame::OnAutoCalcGearScore)
     ON_BN_CLICKED(IDC_BTN_AUTO_DURA, &CMainFrame::OnAutoCalcDurability)
@@ -945,6 +1085,26 @@ void CMainFrame::CreateChildControls() {
                                    IDC_CHK_CLASS_BASE_FIRST + static_cast<UINT>(i));
         regTab(0, m_chkBaseClasses[i]);
     }
+
+    m_lblSubclasses.Create(L"Subclasses (Specializations):", WS_CHILD | SS_ENDELLIPSIS | SS_NOPREFIX, z, this);
+    regTab(0, m_lblSubclasses);
+    m_btnSubclassAll1st.Create(L"All 1st", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_SUBCLASS_ALL_1ST);
+    regTab(0, m_btnSubclassAll1st);
+    m_btnSubclassAll2nd.Create(L"All 2nd", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_SUBCLASS_ALL_2ND);
+    regTab(0, m_btnSubclassAll2nd);
+    m_btnSubclassClear.Create(L"Clear", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_SUBCLASS_CLEAR);
+    regTab(0, m_btnSubclassClear);
+    m_btnSubclassExpand.Create(L"Collapse", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_SUBCLASS_EXPAND);
+    regTab(0, m_btnSubclassExpand);
+
+    m_treeSubclasses.Create(WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | WS_TABSTOP |
+                            TVS_HASLINES | TVS_LINESATROOT | TVS_HASBUTTONS | TVS_CHECKBOXES,
+                            z, this, IDC_TREE_SUBCLASSES);
+    m_treeSubclasses.ModifyStyle(0, TVS_CHECKBOXES);
+    ::SetWindowTheme(m_treeSubclasses.m_hWnd, L"Explorer", nullptr);
+    regTab(0, m_treeSubclasses);
+    PopulateSubclassesTree();
+
     m_lblMidCollisionInfo.Create(L"UIString MID Reference Status", WS_CHILD | SS_ENDELLIPSIS | SS_NOPREFIX, z, this);
     regTab(1, m_lblMidCollisionInfo);
     m_btnForkMids.Create(L"Fork Exclusive MIDs (Safe Rename)", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_FORK_MIDS);
@@ -1760,22 +1920,43 @@ void CMainFrame::LayoutControls(int cx, int cy) {
 
             place(m_lblJobs, c1x, cy1 + DpiScale(2, dpi), DpiScale(120, dpi), sRowH);
             place(m_edtJobs, c1x + DpiScale(124, dpi), cy1, c1w - DpiScale(124, dpi), sRowH);
-            cy1 += sRowH + DpiScale(8, dpi);
+            cy1 += sRowH + DpiScale(6, dpi);
 
             place(m_chkClassAll, c1x, cy1, c1w, sRowH);
-            cy1 += sRowH + DpiScale(6, dpi);
+            cy1 += sRowH + DpiScale(4, dpi);
 
             const int colW = (c1w - DpiScale(10, dpi)) / 2;
             for (size_t i = 0; i < m_chkBaseClasses.size(); ++i) {
                 const int col = static_cast<int>(i % 2);
                 const int row = static_cast<int>(i / 2);
                 const int x = c1x + col * (colW + DpiScale(10, dpi));
-                const int y = cy1 + row * (sRowH + DpiScale(3, dpi));
+                const int y = cy1 + row * (sRowH + DpiScale(2, dpi));
                 place(m_chkBaseClasses[i], x, y, colW, sRowH);
             }
-            cy1 += 5 * (sRowH + DpiScale(3, dpi)) + DpiScale(10, dpi);
+            cy1 += 5 * (sRowH + DpiScale(2, dpi)) + DpiScale(6, dpi);
 
-            place(m_lblJobsResolved, c1x, cy1, c1w, std::max<int>(40, static_cast<int>(rcCard1.bottom - DpiScale(14, dpi) - cy1)));
+            // Subclasses header row & action buttons
+            const int btnW4 = std::clamp((c1w - DpiScale(160, dpi) - DpiScale(12, dpi)) / 4, DpiScale(46, dpi), DpiScale(68, dpi));
+            const int lblW_sub = c1w - (btnW4 * 4 + DpiScale(12, dpi));
+            int curSubX = c1x;
+            place(m_lblSubclasses, curSubX, cy1 + DpiScale(2, dpi), lblW_sub, sRowH);
+            curSubX += lblW_sub + DpiScale(4, dpi);
+            place(m_btnSubclassAll1st, curSubX, cy1, btnW4, sRowH);
+            curSubX += btnW4 + DpiScale(4, dpi);
+            place(m_btnSubclassAll2nd, curSubX, cy1, btnW4, sRowH);
+            curSubX += btnW4 + DpiScale(4, dpi);
+            place(m_btnSubclassClear, curSubX, cy1, btnW4, sRowH);
+            curSubX += btnW4 + DpiScale(4, dpi);
+            place(m_btnSubclassExpand, curSubX, cy1, btnW4, sRowH);
+            cy1 += sRowH + DpiScale(6, dpi);
+
+            // Bottom resolved label
+            const int resolvedH = DpiScale(38, dpi);
+            const int resolvedY = rcCard1.bottom - DpiScale(10, dpi) - resolvedH;
+            const int treeH = std::max<int>(DpiScale(90, dpi), resolvedY - cy1 - DpiScale(6, dpi));
+
+            place(m_treeSubclasses, c1x, cy1, c1w, treeH);
+            place(m_lblJobsResolved, c1x, resolvedY, c1w, resolvedH);
             break;
         }
         case 1: { // Localization
@@ -2303,6 +2484,7 @@ LRESULT CMainFrame::OnWorkspaceLoadFinished(WPARAM wParam, LPARAM /*lParam*/) {
         return 0;
     }
 
+    PopulateSubclassesTree();
     RefreshTableFilterCombo();
     RunItemSearch(-1);
 
@@ -3002,8 +3184,8 @@ void CMainFrame::PopulateStatWidgetsFromItem(const Data::DNItem& item) {
 
 void CMainFrame::SyncClassCheckboxesFromJobString(std::string_view jobStr) {
     m_syncingClasses = true;
-    std::array<bool, 10> hasClass{};
 
+    std::unordered_set<int32_t> jobSet;
     size_t start = 0;
     while (start < jobStr.size()) {
         const size_t end = jobStr.find(';', start);
@@ -3012,18 +3194,131 @@ void CMainFrame::SyncClassCheckboxesFromJobString(std::string_view jobStr) {
 
         int32_t jid = 0;
         const auto [p, ec] = std::from_chars(token.data(), token.data() + token.size(), jid);
-        if (ec == std::errc{} && jid >= 1 && jid <= 10) {
-            hasClass[static_cast<size_t>(jid - 1)] = true;
+        if (ec == std::errc{} && jid > 0) {
+            jobSet.insert(jid);
         }
     }
 
     bool all10 = true;
     for (size_t i = 0; i < 10; ++i) {
-        m_chkBaseClasses[i].SetCheck(hasClass[i] ? BST_CHECKED : BST_UNCHECKED);
-        if (!hasClass[i]) all10 = false;
+        const bool checked = jobSet.contains(kBaseClassIds[i]);
+        m_chkBaseClasses[i].SetCheck(checked ? BST_CHECKED : BST_UNCHECKED);
+        if (!checked) all10 = false;
     }
-    m_chkClassAll.SetCheck((all10 || jobStr.empty()) ? BST_CHECKED : BST_UNCHECKED);
+    m_chkClassAll.SetCheck((all10 || jobStr.empty() || jobStr == "0") ? BST_CHECKED : BST_UNCHECKED);
+
+    if (m_treeSubclasses.GetSafeHwnd()) {
+        auto syncTree = [&](auto& self, HTREEITEM hItem) -> void {
+            while (hItem) {
+                const auto jid = static_cast<int32_t>(m_treeSubclasses.GetItemData(hItem));
+                m_treeSubclasses.SetCheck(hItem, (jid > 0 && jobSet.contains(jid)) ? TRUE : FALSE);
+
+                HTREEITEM hChild = m_treeSubclasses.GetChildItem(hItem);
+                if (hChild) {
+                    self(self, hChild);
+                }
+                hItem = m_treeSubclasses.GetNextSiblingItem(hItem);
+            }
+        };
+        HTREEITEM hRoot = m_treeSubclasses.GetRootItem();
+        syncTree(syncTree, hRoot);
+    }
+
     m_syncingClasses = false;
+}
+
+void CMainFrame::PopulateSubclassesTree() {
+    if (!m_treeSubclasses.GetSafeHwnd()) return;
+
+    std::unordered_set<int32_t> checkedBefore;
+    if (m_treeSubclasses.GetCount() > 0) {
+        std::vector<int32_t> ids;
+        CollectCheckedJobIds(ids);
+        for (int32_t id : ids) checkedBefore.insert(id);
+    }
+
+    m_treeSubclasses.SetRedraw(FALSE);
+    m_treeSubclasses.DeleteAllItems();
+
+    std::unordered_map<int32_t, HTREEITEM> itemMap;
+
+    for (const auto& entry : kDNClassHierarchy) {
+        std::wstring displayName = entry.name;
+        if (m_engine.IsWorkspaceLoaded()) {
+            std::string dynName = m_engine.Items().DescribeJobs(std::to_string(entry.jobId));
+            if (!dynName.empty() && dynName != "All Classes" && dynName.front() != '#') {
+                displayName = Utf8ToWide(dynName);
+            }
+        }
+        const std::wstring itemText = std::format(L"{} (#{})", displayName, entry.jobId);
+
+        HTREEITEM hParent = TVI_ROOT;
+        if (entry.tier > 0) {
+            auto it = itemMap.find(entry.parentId);
+            if (it != itemMap.end()) {
+                hParent = it->second;
+            }
+        }
+
+        HTREEITEM hItem = m_treeSubclasses.InsertItem(itemText.c_str(), hParent, TVI_LAST);
+        m_treeSubclasses.SetItemData(hItem, static_cast<DWORD_PTR>(entry.jobId));
+        itemMap[entry.jobId] = hItem;
+
+        if (checkedBefore.contains(entry.jobId)) {
+            m_treeSubclasses.SetCheck(hItem, TRUE);
+        }
+    }
+
+    for (HTREEITEM h = m_treeSubclasses.GetRootItem(); h != nullptr; h = m_treeSubclasses.GetNextSiblingItem(h)) {
+        m_treeSubclasses.Expand(h, TVE_EXPAND);
+    }
+    m_subclassesExpanded = true;
+    m_btnSubclassExpand.SetWindowTextW(L"Collapse");
+
+    m_treeSubclasses.SetRedraw(TRUE);
+    m_treeSubclasses.Invalidate();
+}
+
+void CMainFrame::CollectCheckedJobIds(std::vector<int32_t>& outIds) const {
+    outIds.clear();
+    if (!m_treeSubclasses.GetSafeHwnd()) return;
+
+    auto checkItemAndChildren = [&](auto& self, HTREEITEM hItem) -> void {
+        while (hItem) {
+            if (m_treeSubclasses.GetCheck(hItem)) {
+                const auto jid = static_cast<int32_t>(m_treeSubclasses.GetItemData(hItem));
+                if (jid > 0) {
+                    outIds.push_back(jid);
+                }
+            }
+            HTREEITEM hChild = m_treeSubclasses.GetChildItem(hItem);
+            if (hChild) {
+                self(self, hChild);
+            }
+            hItem = m_treeSubclasses.GetNextSiblingItem(hItem);
+        }
+    };
+    HTREEITEM hRoot = m_treeSubclasses.GetRootItem();
+    checkItemAndChildren(checkItemAndChildren, hRoot);
+
+    for (size_t i = 0; i < 10; ++i) {
+        if (m_chkBaseClasses[i].GetCheck() == BST_CHECKED) {
+            const int32_t bId = kBaseClassIds[i];
+            if (std::find(outIds.begin(), outIds.end(), bId) == outIds.end()) {
+                outIds.push_back(bId);
+            }
+        }
+    }
+    std::sort(outIds.begin(), outIds.end());
+    outIds.erase(std::unique(outIds.begin(), outIds.end()), outIds.end());
+}
+
+void CMainFrame::SetBranchChecked(HTREEITEM hItem, BOOL bCheck) {
+    if (!hItem) return;
+    m_treeSubclasses.SetCheck(hItem, bCheck);
+    for (HTREEITEM hChild = m_treeSubclasses.GetChildItem(hItem); hChild != nullptr; hChild = m_treeSubclasses.GetNextSiblingItem(hChild)) {
+        SetBranchChecked(hChild, bCheck);
+    }
 }
 
 void CMainFrame::UpdateMidCollisionBanner() {
@@ -3552,17 +3847,39 @@ void CMainFrame::OnClassMatrixClicked(UINT nID) {
         for (size_t i = 0; i < 10; ++i) {
             m_chkBaseClasses[i].SetCheck(checkAll ? BST_CHECKED : BST_UNCHECKED);
         }
-        const std::string newJobs = checkAll ? "1;2;3;4;5;6;7;8;9;10;" : "";
+        if (m_treeSubclasses.GetSafeHwnd()) {
+            for (HTREEITEM h = m_treeSubclasses.GetRootItem(); h != nullptr; h = m_treeSubclasses.GetNextSiblingItem(h)) {
+                m_treeSubclasses.SetCheck(h, checkAll ? TRUE : FALSE);
+            }
+        }
+        const std::string newJobs = checkAll ? "1;2;3;4;5;6;7;8;9;201;" : "";
         m_edtJobs.SetWindowTextW(Utf8ToWide(newJobs));
         m_lblJobsResolved.SetWindowTextW(Utf8ToWide(m_engine.Items().DescribeJobs(newJobs)));
     } else {
+        const size_t bIdx = static_cast<size_t>(nID - IDC_CHK_CLASS_BASE_FIRST);
+        if (bIdx < 10 && m_treeSubclasses.GetSafeHwnd()) {
+            const int32_t bId = kBaseClassIds[bIdx];
+            const BOOL isChecked = (m_chkBaseClasses[bIdx].GetCheck() == BST_CHECKED);
+            for (HTREEITEM h = m_treeSubclasses.GetRootItem(); h != nullptr; h = m_treeSubclasses.GetNextSiblingItem(h)) {
+                if (static_cast<int32_t>(m_treeSubclasses.GetItemData(h)) == bId) {
+                    m_treeSubclasses.SetCheck(h, isChecked);
+                    break;
+                }
+            }
+        }
+
+        std::vector<int32_t> ids;
+        CollectCheckedJobIds(ids);
         std::string newJobs;
+        for (int32_t id : ids) {
+            newJobs += std::format("{};", id);
+        }
+
         bool allChecked = true;
         for (size_t i = 0; i < 10; ++i) {
-            if (m_chkBaseClasses[i].GetCheck() == BST_CHECKED) {
-                newJobs += std::format("{};", i + 1);
-            } else {
+            if (m_chkBaseClasses[i].GetCheck() != BST_CHECKED) {
                 allChecked = false;
+                break;
             }
         }
         m_chkClassAll.SetCheck(allChecked ? BST_CHECKED : BST_UNCHECKED);
@@ -3574,6 +3891,220 @@ void CMainFrame::OnClassMatrixClicked(UINT nID) {
     if (m_chkAutoApply.GetCheck() == BST_CHECKED) {
         OnItemApply();
     }
+}
+
+void CMainFrame::OnSubclassTreeClick(NMHDR* /*pNMHDR*/, LRESULT* pResult) {
+    *pResult = 0;
+    if (m_populatingEditor || m_syncingClasses) return;
+
+    DWORD dwPos = ::GetMessagePos();
+    CPoint pt(GET_X_LPARAM(dwPos), GET_Y_LPARAM(dwPos));
+    m_treeSubclasses.ScreenToClient(&pt);
+
+    UINT uFlags = 0;
+    HTREEITEM hItem = m_treeSubclasses.HitTest(pt, &uFlags);
+    if (hItem && (uFlags & TVHT_ONITEMSTATEICON)) {
+        const BOOL bNew = !m_treeSubclasses.GetCheck(hItem);
+        m_treeSubclasses.SetCheck(hItem, bNew);
+        *pResult = 1; // suppress default tree toggle to avoid double-state bounce
+        OnSubclassTreeCheckChanged(hItem, bNew);
+    }
+}
+
+void CMainFrame::OnSubclassTreeKeyDown(NMHDR* pNMHDR, LRESULT* pResult) {
+    *pResult = 0;
+    if (m_populatingEditor || m_syncingClasses) return;
+
+    auto* pTvKey = reinterpret_cast<NMTVKEYDOWN*>(pNMHDR);
+    if (pTvKey && pTvKey->wVKey == VK_SPACE) {
+        HTREEITEM hItem = m_treeSubclasses.GetSelectedItem();
+        if (hItem) {
+            const BOOL bNew = !m_treeSubclasses.GetCheck(hItem);
+            m_treeSubclasses.SetCheck(hItem, bNew);
+            *pResult = 1;
+            OnSubclassTreeCheckChanged(hItem, bNew);
+        }
+    }
+}
+
+void CMainFrame::OnSubclassTreeRClick(NMHDR* /*pNMHDR*/, LRESULT* pResult) {
+    *pResult = 0;
+    DWORD dwPos = ::GetMessagePos();
+    CPoint pt(GET_X_LPARAM(dwPos), GET_Y_LPARAM(dwPos));
+    CPoint ptClient = pt;
+    m_treeSubclasses.ScreenToClient(&ptClient);
+
+    UINT uFlags = 0;
+    HTREEITEM hItem = m_treeSubclasses.HitTest(ptClient, &uFlags);
+    if (!hItem) return;
+
+    m_treeSubclasses.SelectItem(hItem);
+
+    CMenu menu;
+    menu.CreatePopupMenu();
+    menu.AppendMenuW(MF_STRING, ID_CMD_SUBCLASS_CHECK_BRANCH, L"Check Entire Branch");
+    menu.AppendMenuW(MF_STRING, ID_CMD_SUBCLASS_UNCHECK_BRANCH, L"Uncheck Entire Branch");
+    menu.AppendMenuW(MF_SEPARATOR);
+    menu.AppendMenuW(MF_STRING, ID_CMD_SUBCLASS_TOGGLE_EXPAND, L"Expand / Collapse Branch");
+
+    menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
+    *pResult = 1;
+}
+
+void CMainFrame::OnSubclassTreeCheckChanged(HTREEITEM hItem, BOOL bChecked) {
+    if (m_populatingEditor || m_syncingClasses) return;
+    m_syncingClasses = true;
+
+    if (hItem) {
+        const auto jid = static_cast<int32_t>(m_treeSubclasses.GetItemData(hItem));
+        for (size_t i = 0; i < 10; ++i) {
+            if (kBaseClassIds[i] == jid) {
+                m_chkBaseClasses[i].SetCheck(bChecked ? BST_CHECKED : BST_UNCHECKED);
+                break;
+            }
+        }
+    }
+
+    std::vector<int32_t> ids;
+    CollectCheckedJobIds(ids);
+
+    std::string newJobs;
+    for (int32_t id : ids) {
+        newJobs += std::format("{};", id);
+    }
+
+    bool all10 = true;
+    for (size_t i = 0; i < 10; ++i) {
+        if (m_chkBaseClasses[i].GetCheck() != BST_CHECKED) {
+            all10 = false;
+            break;
+        }
+    }
+    m_chkClassAll.SetCheck(all10 ? BST_CHECKED : BST_UNCHECKED);
+
+    m_edtJobs.SetWindowTextW(Utf8ToWide(newJobs));
+    m_lblJobsResolved.SetWindowTextW(Utf8ToWide(m_engine.Items().DescribeJobs(newJobs)));
+
+    m_syncingClasses = false;
+
+    if (m_chkAutoApply.GetCheck() == BST_CHECKED) {
+        OnItemApply();
+    }
+}
+
+void CMainFrame::OnSubclassCheckBranch() {
+    HTREEITEM hItem = m_treeSubclasses.GetSelectedItem();
+    if (!hItem) return;
+    SetBranchChecked(hItem, TRUE);
+    OnSubclassTreeCheckChanged(hItem, TRUE);
+}
+
+void CMainFrame::OnSubclassUncheckBranch() {
+    HTREEITEM hItem = m_treeSubclasses.GetSelectedItem();
+    if (!hItem) return;
+    SetBranchChecked(hItem, FALSE);
+    OnSubclassTreeCheckChanged(hItem, FALSE);
+}
+
+void CMainFrame::OnSubclassAll1st() {
+    if (m_populatingEditor) return;
+    m_syncingClasses = true;
+
+    auto checkTier1 = [&](auto& self, HTREEITEM hItem) -> void {
+        while (hItem) {
+            const auto jid = static_cast<int32_t>(m_treeSubclasses.GetItemData(hItem));
+            for (const auto& entry : kDNClassHierarchy) {
+                if (entry.jobId == jid && entry.tier == 1) {
+                    m_treeSubclasses.SetCheck(hItem, TRUE);
+                    break;
+                }
+            }
+            HTREEITEM hChild = m_treeSubclasses.GetChildItem(hItem);
+            if (hChild) self(self, hChild);
+            hItem = m_treeSubclasses.GetNextSiblingItem(hItem);
+        }
+    };
+    checkTier1(checkTier1, m_treeSubclasses.GetRootItem());
+
+    std::vector<int32_t> ids;
+    CollectCheckedJobIds(ids);
+    std::string newJobs;
+    for (int32_t id : ids) newJobs += std::format("{};", id);
+
+    m_edtJobs.SetWindowTextW(Utf8ToWide(newJobs));
+    m_lblJobsResolved.SetWindowTextW(Utf8ToWide(m_engine.Items().DescribeJobs(newJobs)));
+    m_syncingClasses = false;
+
+    if (m_chkAutoApply.GetCheck() == BST_CHECKED) OnItemApply();
+}
+
+void CMainFrame::OnSubclassAll2nd() {
+    if (m_populatingEditor) return;
+    m_syncingClasses = true;
+
+    auto checkTier2 = [&](auto& self, HTREEITEM hItem) -> void {
+        while (hItem) {
+            const auto jid = static_cast<int32_t>(m_treeSubclasses.GetItemData(hItem));
+            for (const auto& entry : kDNClassHierarchy) {
+                if (entry.jobId == jid && entry.tier == 2) {
+                    m_treeSubclasses.SetCheck(hItem, TRUE);
+                    break;
+                }
+            }
+            HTREEITEM hChild = m_treeSubclasses.GetChildItem(hItem);
+            if (hChild) self(self, hChild);
+            hItem = m_treeSubclasses.GetNextSiblingItem(hItem);
+        }
+    };
+    checkTier2(checkTier2, m_treeSubclasses.GetRootItem());
+
+    std::vector<int32_t> ids;
+    CollectCheckedJobIds(ids);
+    std::string newJobs;
+    for (int32_t id : ids) newJobs += std::format("{};", id);
+
+    m_edtJobs.SetWindowTextW(Utf8ToWide(newJobs));
+    m_lblJobsResolved.SetWindowTextW(Utf8ToWide(m_engine.Items().DescribeJobs(newJobs)));
+    m_syncingClasses = false;
+
+    if (m_chkAutoApply.GetCheck() == BST_CHECKED) OnItemApply();
+}
+
+void CMainFrame::OnSubclassClear() {
+    if (m_populatingEditor) return;
+    m_syncingClasses = true;
+
+    auto uncheckAll = [&](auto& self, HTREEITEM hItem) -> void {
+        while (hItem) {
+            m_treeSubclasses.SetCheck(hItem, FALSE);
+            HTREEITEM hChild = m_treeSubclasses.GetChildItem(hItem);
+            if (hChild) self(self, hChild);
+            hItem = m_treeSubclasses.GetNextSiblingItem(hItem);
+        }
+    };
+    uncheckAll(uncheckAll, m_treeSubclasses.GetRootItem());
+
+    std::vector<int32_t> ids;
+    CollectCheckedJobIds(ids);
+    std::string newJobs;
+    for (int32_t id : ids) newJobs += std::format("{};", id);
+
+    m_edtJobs.SetWindowTextW(Utf8ToWide(newJobs));
+    m_lblJobsResolved.SetWindowTextW(Utf8ToWide(m_engine.Items().DescribeJobs(newJobs)));
+    m_syncingClasses = false;
+
+    if (m_chkAutoApply.GetCheck() == BST_CHECKED) OnItemApply();
+}
+
+void CMainFrame::OnSubclassToggleExpand() {
+    m_subclassesExpanded = !m_subclassesExpanded;
+    const UINT code = m_subclassesExpanded ? TVE_EXPAND : TVE_COLLAPSE;
+
+    for (HTREEITEM h = m_treeSubclasses.GetRootItem(); h != nullptr; h = m_treeSubclasses.GetNextSiblingItem(h)) {
+        m_treeSubclasses.Expand(h, code);
+    }
+
+    m_btnSubclassExpand.SetWindowTextW(m_subclassesExpanded ? L"Collapse" : L"Expand");
 }
 
 void CMainFrame::OnAutoCalcSell() {
@@ -4198,6 +4729,7 @@ void CMainFrame::LoadInitialWorkspaceWithSplash(const std::filesystem::path& res
     m_loadingWorkspace.store(false);
     if (ok) {
         SetWorkspaceControlsEnabled(true);
+        PopulateSubclassesTree();
         RunItemSearch();
         if (!m_filteredItems.empty()) {
             SelectAndRevealItem(m_filteredItems[0]->id);

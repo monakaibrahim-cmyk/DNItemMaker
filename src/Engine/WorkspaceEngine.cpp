@@ -51,9 +51,9 @@ constexpr BaseClassSpec kBaseClasses[10] = {
     { 5,  "Academic",  true  },
     { 6,  "Kali",      true  },
     { 7,  "Assassin",  false },
-    { 8,  "Lencea",    false },
+    { 8,  "Lancea",    false },
     { 9,  "Machina",   false },
-    { 10, "Vandar",    false },
+    { 201, "Vandar",   false },
 };
 
 void AdaptStatsForDamageType(Data::DNItem& item, bool targetMagical) noexcept {

@@ -151,6 +151,15 @@ protected:
     afx_msg void OnIconIndexEditChanged();
     afx_msg void OnJobsEditChanged();
     afx_msg void OnClassMatrixClicked(UINT nID);
+    afx_msg void OnSubclassTreeClick(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnSubclassTreeKeyDown(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnSubclassTreeRClick(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnSubclassAll1st();
+    afx_msg void OnSubclassAll2nd();
+    afx_msg void OnSubclassClear();
+    afx_msg void OnSubclassToggleExpand();
+    afx_msg void OnSubclassCheckBranch();
+    afx_msg void OnSubclassUncheckBranch();
     afx_msg void OnAutoCalcSell();
     afx_msg void OnAutoCalcGearScore();
     afx_msg void OnAutoCalcDurability();
@@ -267,6 +276,10 @@ private:
     bool CollectItemFromEditor(Data::DNItem& outItem, std::string& outError) const;
     void PopulateStatWidgetsFromItem(const Data::DNItem& item);
     void SyncClassCheckboxesFromJobString(std::string_view jobStr);
+    void PopulateSubclassesTree();
+    void OnSubclassTreeCheckChanged(HTREEITEM hItem, BOOL bChecked);
+    void CollectCheckedJobIds(std::vector<int32_t>& outIds) const;
+    void SetBranchChecked(HTREEITEM hItem, BOOL bCheck);
     void UpdateMidCollisionBanner();
     void UpdateLiveResolvedPreviews();
     void PopulateRawInspectorList();
@@ -453,6 +466,13 @@ private:
     CFlatEdit m_edtJobs;
     CButton m_chkClassAll;
     std::array<CButton, 10> m_chkBaseClasses;
+    CStatic m_lblSubclasses;
+    CFlatButton m_btnSubclassAll1st;
+    CFlatButton m_btnSubclassAll2nd;
+    CFlatButton m_btnSubclassClear;
+    CFlatButton m_btnSubclassExpand;
+    CTreeCtrl m_treeSubclasses;
+    bool m_subclassesExpanded = true;
 
     // Tab 1: Localization
     CStatic m_lblMidCollisionInfo;

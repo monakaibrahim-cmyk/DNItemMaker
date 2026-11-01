@@ -1023,6 +1023,127 @@ std::string ItemManager::ResolveTemplate(std::string_view templateText, std::str
 
 
 
+namespace {
+constexpr const char* FallbackJobName(int32_t id) noexcept {
+    switch (id) {
+        // Base classes
+        case 1:   return "Warrior";
+        case 2:   return "Archer";
+        case 3:   return "Sorceress";
+        case 4:   return "Cleric";
+        case 5:   return "Academic";
+        case 6:   return "Kali";
+        case 7:   return "Assassin";
+        case 8:   return "Lancea";
+        case 9:   return "Machina";
+        case 201: return "Vandar";
+
+        // Warrior specializations
+        case 11:  return "Swordmaster";
+        case 12:  return "Mercenary";
+        case 23:  return "Gladiator";
+        case 24:  return "Moonlord";
+        case 25:  return "Barbarian";
+        case 26:  return "Destroyer";
+        case 75:  return "Avenger";
+        case 76:  return "Dark Avenger";
+        case 106: return "Knight";
+        case 107: return "Mystic Knight";
+        case 108: return "Grand Master";
+
+        // Archer specializations
+        case 14:  return "Bowmaster";
+        case 15:  return "Acrobat";
+        case 29:  return "Sniper";
+        case 30:  return "Artillery";
+        case 31:  return "Tempest";
+        case 32:  return "Wind Walker";
+        case 80:  return "Hunter";
+        case 81:  return "Silver Hunter";
+
+        // Sorceress specializations
+        case 17:  return "Elemental Lord";
+        case 18:  return "Force User";
+        case 35:  return "Saleana";
+        case 36:  return "Elestra";
+        case 37:  return "Smasher";
+        case 38:  return "Majesty";
+        case 84:  return "Mara";
+        case 85:  return "Black Mara";
+
+        // Cleric specializations
+        case 20:  return "Paladin";
+        case 22:  return "Priest";
+        case 41:  return "Guardian";
+        case 42:  return "Crusader";
+        case 43:  return "Saint";
+        case 44:  return "Inquisitor";
+        case 82:  return "Heretic";
+        case 83:  return "Arch Heretic";
+
+        // Academic specializations
+        case 46:  return "Engineer";
+        case 47:  return "Shooting Star";
+        case 48:  return "Gear Master";
+        case 49:  return "Alchemist";
+        case 50:  return "Adept";
+        case 51:  return "Physician";
+        case 86:  return "Mechanic";
+        case 87:  return "Ray Mechanic";
+
+        // Kali specializations
+        case 54:  return "Screamer";
+        case 55:  return "Dark Summoner";
+        case 56:  return "Soul Eater";
+        case 57:  return "Dancer";
+        case 58:  return "Blade Dancer";
+        case 59:  return "Spirit Dancer";
+        case 88:  return "Oracle";
+        case 89:  return "Oracle Elder";
+
+        // Assassin specializations
+        case 62:  return "Chaser";
+        case 63:  return "Ripper";
+        case 64:  return "Raven";
+        case 67:  return "Bringer";
+        case 68:  return "Light Fury";
+        case 69:  return "Abyss Walker";
+        case 90:  return "Phantom";
+        case 91:  return "Bleed Phantom";
+
+        // Lancea specializations
+        case 72:  return "Piercer";
+        case 73:  return "Flurry";
+        case 74:  return "Sting Breezer";
+        case 92:  return "Knightess";
+        case 93:  return "Avalanche";
+        case 94:  return "Randgrid";
+        case 98:  return "Plaga";
+        case 99:  return "Vena Plaga";
+
+        // Machina specializations
+        case 77:  return "Patrona";
+        case 78:  return "Defensio";
+        case 79:  return "Ruina";
+        case 95:  return "Launcher";
+        case 96:  return "Impactor";
+        case 97:  return "Luster";
+        case 109: return "Beastia";
+        case 110: return "Beastia Reina";
+
+        // Vandar specializations
+        case 100: return "Treasure Hunter";
+        case 101: return "Wanderer";
+        case 102: return "Duelist";
+        case 103: return "Trickster";
+        case 104: return "Revenant";
+        case 105: return "Maverick";
+
+        default:  return nullptr;
+    }
+}
+} // namespace
+
 std::string ItemManager::DescribeJobs(std::string_view rawJobList) const {
 
     if (rawJobList.empty() || rawJobList == "0") return "All Classes";
@@ -1076,6 +1197,10 @@ std::string ItemManager::DescribeJobs(std::string_view rawJobList) const {
                 if (!jobSv.empty()) {
 
                     out.append(jobSv);
+
+                } else if (const char* fb = FallbackJobName(id)) {
+
+                    out.append(fb);
 
                 } else {
 
