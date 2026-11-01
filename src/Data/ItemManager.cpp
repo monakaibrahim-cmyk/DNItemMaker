@@ -187,23 +187,148 @@ struct TypeNameInfo {
 // Subset of eItemTypeEnum (Common/Protocol/DNItemTypeDef.h) that appears in the shipped item tables.
 
 constexpr TypeNameInfo kTypeNames[] = {
-
-    { 0, "Weapon" }, { 1, "Armor / Parts" }, { 2, "General" }, { 3, "Skill" }, { 4, "Jewel" }, { 5, "Heraldry / Plate" },
-
-    { 6, "Instant" }, { 7, "Quest" }, { 8, "Random Box" }, { 9, "Hair Dye" }, { 10, "Skill Book" },
-
-    { 11, "Enchant Success Up" }, { 12, "Enchant Break Guard" }, { 13, "Revive Coin" }, { 14, "Inventory Slot" },
-
-    { 15, "Warehouse Slot" }, { 27, "Seal" }, { 38, "Glyph" }, { 43, "Potential Jewel" }, { 46, "Charm" },
-
-    { 50, "Secondary Skill Recipe" }, { 51, "Appellation" }, { 65, "Cooking" }, { 97, "Sealable Normal" },
-
-    { 105, "Party Buff" }, { 112, "All-Give Charm" }, { 113, "Choice Cube" }, { 122, "Random Charm" },
-
-    { 123, "Direct Party Buff" }, { 128, "Ring" }, { 132, "Talisman" }, { 139, "Dragon Gem" },
-
+    { 0, "Weapon" },
+    { 1, "Armor / Parts" },
+    { 2, "General / Material" },
+    { 3, "Skill" },
+    { 4, "Jewel" },
+    { 5, "Plate / Heraldry" },
+    { 6, "Instant / Consumable" },
+    { 7, "Quest" },
+    { 8, "Random Box" },
+    { 9, "Hair Dye" },
+    { 10, "Skill Book" },
+    { 11, "Enchant Success Up" },
+    { 12, "Enchant Break Guard (Jelly)" },
+    { 13, "Rebirth Coin" },
+    { 14, "Inventory Slot Expansion" },
+    { 15, "Warehouse Slot Expansion" },
+    { 16, "Gesture" },
+    { 17, "Character Slot Expansion" },
+    { 18, "Skin Dye" },
+    { 19, "Facial Feature" },
+    { 20, "Hair Dress" },
+    { 21, "Eye Dye" },
+    { 22, "Force Use Skill" },
+    { 23, "Premium Post" },
+    { 24, "Fatigue Up" },
+    { 25, "Force Use Equip" },
+    { 26, "Premium Trade" },
+    { 27, "Seal Stamp" },
+    { 28, "Reward Item Identify" },
+    { 29, "Skill Reset" },
+    { 30, "World Message (Bird)" },
+    { 31, "Slide Message" },
+    { 32, "Gacha Coin" },
+    { 33, "VIP Membership" },
+    { 34, "Pet Egg" },
+    { 35, "Pet" },
+    { 36, "Pet Parts" },
+    { 37, "Pet Feed" },
+    { 38, "Glyph" },
+    { 39, "Costume Mix" },
+    { 40, "Voice Font" },
+    { 41, "Surround Chat" },
+    { 42, "NPC Voice Player" },
+    { 43, "Potential Jewel" },
+    { 44, "Vehicle / Mount" },
+    { 45, "Vehicle Parts" },
+    { 46, "Charm" },
+    { 47, "Expand" },
+    { 48, "Vehicle Hair Color" },
+    { 49, "Petal Token" },
+    { 50, "Secondary Skill Recipe" },
+    { 51, "Appellation / Title" },
+    { 52, "Farming Seed" },
+    { 53, "Guild Rename" },
+    { 54, "Growing Boost" },
+    { 55, "Water" },
+    { 56, "Fishing Rod" },
+    { 57, "Water Bottle" },
+    { 58, "Enchant Shield" },
+    { 59, "Guild Warehouse Slot" },
+    { 60, "Fishing Bait" },
+    { 61, "Character Rename" },
+    { 62, "Vehicle Effect" },
+    { 63, "Sea Dragon Rebirth" },
+    { 64, "Crop" },
+    { 65, "Cooking" },
+    { 66, "Fish" },
+    { 67, "Enchant Jewel" },
+    { 68, "Guild Mark" },
+    { 69, "Union Membership" },
+    { 70, "Remote Enchant" },
+    { 71, "Help Book" },
+    { 72, "Return Home" },
+    { 73, "Costume Design Mix" },
+    { 74, "Change Job" },
+    { 75, "Repair Equip Item" },
+    { 76, "Farm VIP" },
+    { 77, "Remote Item Compound" },
+    { 78, "Pet Expire" },
+    { 79, "Infinite Skill Reset" },
+    { 80, "Pet Color Body" },
+    { 81, "Pet Color Tattoo" },
+    { 82, "Glyph Slot Expansion" },
+    { 83, "Immediate Rebirth" },
+    { 84, "Period Appellation" },
+    { 85, "Period Plate" },
+    { 86, "Increase Life" },
+    { 87, "Period EXP Item" },
+    { 88, "Pet Rename" },
+    { 89, "Expand Skill Page" },
+    { 90, "Source" },
+    { 91, "Pet EXP" },
+    { 92, "Pet Skill" },
+    { 93, "Pet Skill Slot" },
+    { 94, "Private Farm Extend" },
+    { 95, "Free Pass" },
+    { 96, "Unlimited Free Pass" },
+    { 97, "Sealable Normal" },
+    { 98, "Remote Warehouse" },
+    { 99, "Costume Random Mix" },
+    { 100, "Sale Coupon" },
+    { 101, "Donation Coupon" },
+    { 102, "Auto Unpack" },
+    { 103, "Potential Extractor" },
+    { 104, "Pet Food" },
+    { 105, "Global Party Buff" },
+    { 106, "Chaos Cube" },
+    { 107, "Fixed Price" },
+    { 108, "Best Friend" },
+    { 109, "Gift Box" },
+    { 110, "Menu Box" },
+    { 111, "Best Friend Buff" },
+    { 112, "All-Give Charm" },
+    { 113, "Choice Cube" },
+    { 114, "Rebirth Coin EX" },
+    { 115, "Inventory Slot EX" },
+    { 116, "Warehouse Slot EX" },
+    { 117, "EXP Up Item" },
+    { 118, "Ultimate Fatigue Up" },
+    { 119, "Expand TS" },
+    { 120, "Total Skill Level Slot" },
+    { 121, "Transform Potion" },
+    { 122, "Random Charm" },
+    { 123, "Direct Party Buff" },
+    { 124, "Period Plate EX" },
+    { 125, "Comeback Effect Item" },
+    { 126, "Stage Complete Use Item" },
+    { 127, "Add Quest" },
+    { 128, "Ring" },
+    { 129, "Server Warehouse Coin" },
+    { 130, "Head Scale Potion" },
+    { 131, "PVP EXP Up" },
+    { 132, "Talisman" },
+    { 133, "Period Talisman EX" },
+    { 134, "Period Inventory" },
+    { 135, "Period Warehouse" },
+    { 136, "New Money Seed" },
+    { 137, "Village Buff Cash Tab Open" },
+    { 138, "Set Item" },
+    { 139, "Dragon Gem / Jade" },
     { 140, "Dragon Gem Remover" },
-
+    { 155, "Vehicle Share" },
 };
 
 
@@ -614,7 +739,7 @@ const char* ItemManager::RankName(int32_t rank) noexcept {
 
         case 4: return "Unique";
 
-        case 5: return "Heroic";
+        case 5: return "Legend";
 
         case 6: return "Named";
 
@@ -5532,17 +5657,17 @@ std::string ItemManager::GenerateRichTooltipDescription(const DNItem& item) cons
 
     switch (item.rank) {
 
-        case 1: rankColor = "#g"; break;
+        case 1: rankColor = "#g"; break; // Magic: Green
 
-        case 2: rankColor = "#b"; break;
+        case 2: rankColor = "#b"; break; // Rare: Blue
 
-        case 3: rankColor = "#y"; break;
+        case 3: rankColor = "#y"; break; // Epic: Orange/Yellow
 
-        case 4: rankColor = "#v"; break;
+        case 4: rankColor = "#v"; break; // Unique: Purple
 
-        case 5: rankColor = "#y"; break;
+        case 5: rankColor = "#r"; break; // Legend: Red
 
-        case 6: rankColor = "#r"; break;
+        case 6: rankColor = "#y"; break; // Named / Divine: Gold
 
         default: rankColor = "#w"; break;
 

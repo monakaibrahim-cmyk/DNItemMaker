@@ -1317,7 +1317,7 @@ void CMainFrame::CreateChildControls() {
     m_edtTierGrowth.SetWindowTextW(L"28");
     regTab(5, m_edtTierGrowth);
 
-    constexpr const wchar_t* kTierRankNames[7] = { L"Normal", L"Magic", L"Rare", L"Epic", L"Unique", L"Heroic", L"Named" };
+    constexpr const wchar_t* kTierRankNames[7] = { L"Normal", L"Magic", L"Rare", L"Epic", L"Unique", L"Legend", L"Named" };
     for (size_t r = 0; r < 7; ++r) {
         m_chkTierRanks[r].Create(kTierRankNames[r], WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, z, this,
                                  IDC_TIER_RANK_FIRST + static_cast<UINT>(r));

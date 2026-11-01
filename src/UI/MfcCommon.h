@@ -84,16 +84,16 @@ inline int DpiScale(int px, int dpi) noexcept {
     return ::MulDiv(px, dpi, 96);
 }
 
-/// Authentic Dragon Nest item rank color (readable on light & dark panels).
+/// Authentic Dragon Nest item rank color (from client itemcolor:: namespace in EtUITextUtil.h).
 inline COLORREF RankTextColor(int32_t rank, bool onDarkBg = false) noexcept {
     switch (rank) {
-        case 0: return onDarkBg ? RGB(225, 228, 232) : RGB(45, 50, 58);    // Normal (D)
-        case 1: return onDarkBg ? RGB(105, 220, 105) : RGB(24, 138, 42);   // Magic (C)
-        case 2: return onDarkBg ? RGB(95, 175, 255)  : RGB(18, 102, 204);  // Rare (B)
-        case 3: return onDarkBg ? RGB(255, 165, 60)  : RGB(204, 98, 0);    // Epic (A)
-        case 4: return onDarkBg ? RGB(205, 120, 255) : RGB(138, 43, 206);  // Unique (S)
-        case 5: return onDarkBg ? RGB(255, 215, 85)  : RGB(176, 118, 0);   // Heroic / Legendary (SS)
-        case 6: return onDarkBg ? RGB(255, 95, 115)  : RGB(196, 28, 52);   // Named / Ancient (SSS)
+        case 0: return onDarkBg ? RGB(225, 228, 232) : RGB(45, 50, 58);    // Normal (D) - itemcolor::NORMAL 0xFFFFFFFF
+        case 1: return onDarkBg ? RGB(136, 171, 7)   : RGB(88, 130, 5);     // Magic (C) - itemcolor::MAGIC 0xFF88AB07
+        case 2: return onDarkBg ? RGB(121, 146, 254) : RGB(35, 85, 210);    // Rare (B) - itemcolor::RARE 0xFF7992FE
+        case 3: return onDarkBg ? RGB(255, 145, 72)  : RGB(215, 95, 10);    // Epic (A) - itemcolor::EPIC 0xFFFF9148
+        case 4: return onDarkBg ? RGB(191, 139, 255) : RGB(140, 55, 220);   // Unique (S) - itemcolor::UNIQUE 0xFFBF8BFF
+        case 5: return onDarkBg ? RGB(220, 35, 85)   : RGB(195, 20, 60);    // Legend / Heroic (SS) - itemcolor::HEROIC 0xFFDC2355
+        case 6: return onDarkBg ? RGB(255, 210, 50)  : RGB(185, 140, 5);    // Named / Ancient / Divine (SSS) - itemcolor::NAMED 0xFFFFD232
         default: return onDarkBg ? RGB(200, 200, 200) : RGB(60, 60, 60);
     }
 }
