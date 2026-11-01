@@ -1334,15 +1334,42 @@ void CMainFrame::ShowActiveEditorTab(int tabIdx) {
         auto it = std::find(m_visibleTabs.begin(), m_visibleTabs.end(), tabIdx);
         m_tabCtrl.SetCurSel(static_cast<int>(std::distance(m_visibleTabs.begin(), it)));
     }
+    if (m_tabCtrl.GetSafeHwnd()) {
+        m_tabCtrl.Invalidate(FALSE);
+    }
 
+    // 1. Hide controls of all inactive tabs that are currently visible
     for (int t = 0; t < kEditorTabCount; ++t) {
-        const int show = (t == tabIdx) ? SW_SHOW : SW_HIDE;
-        for (CWnd* w : m_tabControls[static_cast<size_t>(t)]) {
-            if (w && w->GetSafeHwnd()) w->ShowWindow(show);
+        if (t != tabIdx) {
+            for (CWnd* w : m_tabControls[static_cast<size_t>(t)]) {
+                if (w && w->GetSafeHwnd() && w->IsWindowVisible()) {
+                    w->ShowWindow(SW_HIDE);
+                }
+            }
         }
     }
 
-    if (tabIdx == 3 && m_selectedItemId > 0) {
+    // 2. Position the controls of the active tab at their exact coordinates before making them visible
+    CRect client;
+    GetClientRect(&client);
+    LayoutControls(client.Width(), client.Height());
+
+    // 3. Show controls of the new active tab
+    for (CWnd* w : m_tabControls[static_cast<size_t>(tabIdx)]) {
+        if (w && w->GetSafeHwnd()) {
+            w->ShowWindow(SW_SHOW);
+        }
+    }
+
+    // 4. Tab-specific data synchronization & refresh
+    if (tabIdx == 1) {
+        UpdateLiveResolvedPreviews();
+        UpdateMidCollisionBanner();
+    } else if (tabIdx == 2 && m_selectedItemId > 0) {
+        if (const auto* cur = m_engine.Items().GetItem(m_selectedItemId)) {
+            PopulateStatWidgetsFromItem(*cur);
+        }
+    } else if (tabIdx == 3 && m_selectedItemId > 0) {
         if (const auto* cur = m_engine.Items().GetItem(m_selectedItemId)) {
             Graphics::ImageBuffer iconTile;
             const bool hasIcon = m_engine.GetItemIcon(cur->iconIndex, iconTile);
@@ -1350,6 +1377,7 @@ void CMainFrame::ShowActiveEditorTab(int tabIdx) {
             m_previewWnd.SetPreviewData(cur, hasIcon ? &iconTile : nullptr, std::move(bundle));
         }
         m_previewWnd.SetAutoSpin(m_chkAutoSpin.GetCheck() == BST_CHECKED);
+        m_previewWnd.Invalidate(FALSE);
     } else if (tabIdx != 3) {
         m_previewWnd.SetAutoSpin(false);
     }
@@ -1362,10 +1390,13 @@ void CMainFrame::ShowActiveEditorTab(int tabIdx) {
         PopulateCharmTabForCurrentItem();
     }
 
-    CRect client;
-    GetClientRect(&client);
-    LayoutControls(client.Width(), client.Height());
-    RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+    // 5. Targeted redraw of the right card tab area only:
+    // Completely spares the left item browser (160k virtual rows) and top header bar from redraw lag.
+    const int dpi = GetWindowDpi(GetSafeHwnd());
+    const int bannerH = DpiScale(72, dpi);
+    CRect rcRedraw(m_rcRightCard.left, m_rcRightCard.top + bannerH,
+                   m_rcRightCard.right, m_rcRightCard.bottom);
+    RedrawWindow(&rcRedraw, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 }
 
 void CMainFrame::OnTabSelChange(NMHDR* /*pNMHDR*/, LRESULT* pResult) {
@@ -2184,20 +2215,26 @@ void CMainFrame::LayoutControls(int cx, int cy) {
 
     ::EndDeferWindowPos(hdwp);
 
-    // Keep all groupboxes behind sibling controls so they never occlude child widgets
-    for (CWnd* grp : { &m_grpBrowser, &m_grpSummary, &m_grpBottomActions,
-                       &m_grpBasicProps, &m_grpJobs, &m_grpNameMid, &m_grpColorTags, &m_grpDescMid,
-                       &m_grpArchetypes, &m_grpStateRows, &m_grpViewport, &m_grpVisualCloner,
-                       &m_grpRawInspector, &m_grpRawEdit, &m_grpTierGen, &m_grpSeriesGen,
-                       &m_grpBatchEdit, &m_grpTools, &m_grpJsonPacks, &m_grpModDrafts,
-                       &m_grpCharmHeader, &m_grpCharmTable, &m_grpCharmStats, &m_grpCharmSim, &m_grpCharmBalance }) {
+    // Keep active groupboxes behind sibling controls so they never occlude child widgets
+    std::vector<CWnd*> activeGrps = { &m_grpBrowser, &m_grpSummary, &m_grpBottomActions };
+    switch (m_activeTab) {
+        case 0: activeGrps.push_back(&m_grpBasicProps); activeGrps.push_back(&m_grpJobs); break;
+        case 1: activeGrps.push_back(&m_grpNameMid); activeGrps.push_back(&m_grpColorTags); activeGrps.push_back(&m_grpDescMid); break;
+        case 2: activeGrps.push_back(&m_grpArchetypes); activeGrps.push_back(&m_grpStateRows); break;
+        case 3: activeGrps.push_back(&m_grpViewport); activeGrps.push_back(&m_grpVisualCloner); break;
+        case 4: activeGrps.push_back(&m_grpRawInspector); activeGrps.push_back(&m_grpRawEdit); break;
+        case 5: activeGrps.push_back(&m_grpTierGen); activeGrps.push_back(&m_grpSeriesGen); activeGrps.push_back(&m_grpBatchEdit); break;
+        case 6: activeGrps.push_back(&m_grpTools); activeGrps.push_back(&m_grpJsonPacks); activeGrps.push_back(&m_grpModDrafts); break;
+        case 7: activeGrps.push_back(&m_grpCharmHeader); activeGrps.push_back(&m_grpCharmTable); activeGrps.push_back(&m_grpCharmStats);
+                activeGrps.push_back(&m_grpCharmSim); activeGrps.push_back(&m_grpCharmBalance); break;
+        default: break;
+    }
+    for (CWnd* grp : activeGrps) {
         if (grp && grp->GetSafeHwnd()) {
             ::SetWindowPos(grp->GetSafeHwnd(), HWND_BOTTOM, 0, 0, 0, 0,
                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOCOPYBITS);
         }
     }
-
-    RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 }
 
 void CMainFrame::SetWorkspaceControlsEnabled(bool enabled) {
@@ -2879,6 +2916,8 @@ void CMainFrame::LoadItemIntoEditor(const Data::DNItem* item) {
     PopulateStatWidgetsFromItem(*item);
     if (m_activeTab == 4) {
         PopulateRawInspectorList();
+    } else if (m_activeTab == 7) {
+        PopulateCharmTabForCurrentItem();
     }
     CString curTierName;
     m_edtTierBaseName.GetWindowTextW(curTierName);
