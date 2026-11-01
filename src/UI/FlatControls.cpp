@@ -336,10 +336,7 @@ void CFlatGroupBox::PreSubclassWindow() {
 
 
 
-BOOL CFlatGroupBox::OnEraseBkgnd(CDC* pDC) {
-    CRect rc;
-    GetClientRect(&rc);
-    pDC->FillSolidRect(&rc, Theme::kChrome);
+BOOL CFlatGroupBox::OnEraseBkgnd(CDC* /*pDC*/) {
     return TRUE;
 }
 
@@ -363,7 +360,8 @@ void CFlatGroupBox::OnPaint() {
 
     if (rc.Width() <= 0 || rc.Height() <= 0) return;
 
-    dc.FillSolidRect(&rc, Theme::kChrome);
+    // Do NOT fill the interior rect: sibling controls inside the groupbox would be erased.
+    // Background is cleanly painted by the parent window.
 
     CString text;
 

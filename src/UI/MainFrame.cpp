@@ -592,7 +592,7 @@ CMainFrame::~CMainFrame() {
 BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs) {
     if (!CFrameWnd::PreCreateWindow(cs)) return FALSE;
     cs.style &= ~FWS_ADDTOTITLE;
-    cs.style |= WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+    cs.style |= WS_CLIPSIBLINGS;
     return TRUE;
 }
 
@@ -612,7 +612,7 @@ bool CMainFrame::CreateMainWindow() {
 
     m_strTitle = Utf8ToWide(std::format("{} v{}", Resources::Version::AppName, Resources::Version::ShortVersionString));
     return CreateEx(0, cls, m_strTitle,
-                    WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
+                    WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS,
                     CRect(left, top, left + initW, top + initH),
                     nullptr, 0) != FALSE;
 }

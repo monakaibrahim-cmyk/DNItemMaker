@@ -884,6 +884,13 @@ BOOL CDragonJewelStudioDlg::OnInitDialog() {
     auto dluX = [base](int dlu) { return Theme::DluX(dlu, base); };
     auto dluY = [base](int dlu) { return Theme::DluY(dlu, base); };
 
+    const int clientW = dluX(525);
+    const int clientH = dluY(360);
+    CRect winRc(0, 0, clientW, clientH);
+    ::AdjustWindowRectEx(&winRc, GetStyle(), FALSE, GetExStyle());
+    SetWindowPos(nullptr, 0, 0, winRc.Width(), winRc.Height(), SWP_NOMOVE | SWP_NOZORDER);
+    CenterWindow();
+
     const auto* curItem = m_engine.Items().GetItem(m_selectedItemId);
     std::wstring hdr = L"Target Item: (None selected)";
     if (curItem) {
@@ -1240,6 +1247,13 @@ BOOL CSetItemStudioDlg::OnInitDialog() {
     auto dluX = [base](int dlu) { return Theme::DluX(dlu, base); };
     auto dluY = [base](int dlu) { return Theme::DluY(dlu, base); };
 
+    const int clientW = dluX(545);
+    const int clientH = dluY(365);
+    CRect winRc(0, 0, clientW, clientH);
+    ::AdjustWindowRectEx(&winRc, GetStyle(), FALSE, GetExStyle());
+    SetWindowPos(nullptr, 0, 0, winRc.Width(), winRc.Height(), SWP_NOMOVE | SWP_NOZORDER);
+    CenterWindow();
+
     m_lblHeader.Create(L"Dragon Nest Equipment Sets & Tiered Set Bonuses", WS_CHILD | WS_VISIBLE | SS_NOPREFIX,
                        CRect(dluX(10), dluY(8), dluX(530), dluY(20)), this);
     m_lblHeader.SetFont(&m_fonts.bold);
@@ -1518,6 +1532,13 @@ BOOL CEnchantStudioDlg::OnInitDialog() {
 
     auto dluX = [base](int dlu) { return Theme::DluX(dlu, base); };
     auto dluY = [base](int dlu) { return Theme::DluY(dlu, base); };
+
+    const int clientW = dluX(545);
+    const int clientH = dluY(365);
+    CRect winRc(0, 0, clientW, clientH);
+    ::AdjustWindowRectEx(&winRc, GetStyle(), FALSE, GetExStyle());
+    SetWindowPos(nullptr, 0, 0, winRc.Width(), winRc.Height(), SWP_NOMOVE | SWP_NOZORDER);
+    CenterWindow();
 
     const auto* it = m_engine.Items().GetItem(m_itemId);
     std::wstring hdr = std::format(L"Enchant Progression Curve #{} (Total Steps: {})",
