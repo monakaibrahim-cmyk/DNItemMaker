@@ -1,3 +1,5 @@
+#include "Graphics/ActConverter.h"
+#include "Graphics/DDSParser.h"
 #include <random>
 #include "UI/ModalDialogs.h"
 #include "version.h"
@@ -57,6 +59,30 @@ enum DialogCtrlIds : UINT {
     IDC_ENC_TRIALS_COMBO,
     IDC_ENC_RUN_BTN,
     IDC_ENC_TELEMETRY,
+
+    IDC_ACT_INPUT_EDIT = 3801,
+    IDC_ACT_BROWSE_IN,
+    IDC_ACT_CONVERT_SINGLE,
+    IDC_ACT_BATCH_EDIT,
+    IDC_ACT_BROWSE_BATCH,
+    IDC_ACT_BACKUP_CHK,
+    IDC_ACT_CONVERT_BATCH,
+    IDC_ACT_LOG,
+
+    IDC_ICON_TOOL_PENCIL = 3901,
+    IDC_ICON_TOOL_ERASER,
+    IDC_ICON_TOOL_FILL,
+    IDC_ICON_TOOL_EYEDROPPER,
+    IDC_ICON_TOOL_CLEAR,
+    IDC_ICON_GRID_CHK,
+    IDC_ICON_IMPORT_BTN,
+    IDC_ICON_PASTE_BTN,
+    IDC_ICON_EXP_PNG,
+    IDC_ICON_EXP_DDS,
+    IDC_ICON_ASSIGN_BTN,
+    IDC_ICON_RANK_COMBO,
+    IDC_ICON_APPLY_BORDER,
+    IDC_ICON_PALETTE_BASE = 3950,
 };
 
 } // namespace
@@ -863,7 +889,7 @@ BEGIN_MESSAGE_MAP(CDragonJewelStudioDlg, CThemedDialog)
 END_MESSAGE_MAP()
 
 CDragonJewelStudioDlg::CDragonJewelStudioDlg(Engine::WorkspaceEngine& engine, int32_t currentItemId, CWnd* parent)
-    : m_tmpl(L"Dragon Jewel & Socket Studio", 520, 360),
+    : m_tmpl(L"Dragon Jewel & Socket Studio", 580, 420, WS_CLIPCHILDREN | WS_CLIPSIBLINGS),
       m_engine(engine),
       m_selectedItemId(currentItemId) {
     InitModalIndirect(m_tmpl.Get(), parent);
@@ -884,11 +910,14 @@ BOOL CDragonJewelStudioDlg::OnInitDialog() {
     auto dluX = [base](int dlu) { return Theme::DluX(dlu, base); };
     auto dluY = [base](int dlu) { return Theme::DluY(dlu, base); };
 
-    const int clientW = dluX(525);
-    const int clientH = dluY(360);
-    CRect winRc(0, 0, clientW, clientH);
-    ::AdjustWindowRectEx(&winRc, GetStyle(), FALSE, GetExStyle());
-    SetWindowPos(nullptr, 0, 0, winRc.Width(), winRc.Height(), SWP_NOMOVE | SWP_NOZORDER);
+    const int clientW = dluX(580);
+    const int clientH = dluY(420);
+    CRect curClient, curWin;
+    GetClientRect(&curClient);
+    GetWindowRect(&curWin);
+    const int extraW = curWin.Width() - curClient.Width();
+    const int extraH = curWin.Height() - curClient.Height();
+    SetWindowPos(nullptr, 0, 0, clientW + extraW, clientH + extraH, SWP_NOMOVE | SWP_NOZORDER);
     CenterWindow();
 
     const auto* curItem = m_engine.Items().GetItem(m_selectedItemId);
@@ -1231,7 +1260,7 @@ BEGIN_MESSAGE_MAP(CSetItemStudioDlg, CThemedDialog)
 END_MESSAGE_MAP()
 
 CSetItemStudioDlg::CSetItemStudioDlg(Engine::WorkspaceEngine& engine, int32_t initialSetId, CWnd* parent)
-    : m_tmpl(L"Set Item Bonus Inspector & Simulator", 540, 360),
+    : m_tmpl(L"Set Item Bonus Inspector & Simulator", 580, 420, WS_CLIPCHILDREN | WS_CLIPSIBLINGS),
       m_engine(engine),
       m_currentSetId(initialSetId) {
     InitModalIndirect(m_tmpl.Get(), parent);
@@ -1247,11 +1276,14 @@ BOOL CSetItemStudioDlg::OnInitDialog() {
     auto dluX = [base](int dlu) { return Theme::DluX(dlu, base); };
     auto dluY = [base](int dlu) { return Theme::DluY(dlu, base); };
 
-    const int clientW = dluX(545);
-    const int clientH = dluY(365);
-    CRect winRc(0, 0, clientW, clientH);
-    ::AdjustWindowRectEx(&winRc, GetStyle(), FALSE, GetExStyle());
-    SetWindowPos(nullptr, 0, 0, winRc.Width(), winRc.Height(), SWP_NOMOVE | SWP_NOZORDER);
+    const int clientW = dluX(580);
+    const int clientH = dluY(420);
+    CRect curClient, curWin;
+    GetClientRect(&curClient);
+    GetWindowRect(&curWin);
+    const int extraW = curWin.Width() - curClient.Width();
+    const int extraH = curWin.Height() - curClient.Height();
+    SetWindowPos(nullptr, 0, 0, clientW + extraW, clientH + extraH, SWP_NOMOVE | SWP_NOZORDER);
     CenterWindow();
 
     m_lblHeader.Create(L"Dragon Nest Equipment Sets & Tiered Set Bonuses", WS_CHILD | WS_VISIBLE | SS_NOPREFIX,
@@ -1515,7 +1547,7 @@ BEGIN_MESSAGE_MAP(CEnchantStudioDlg, CThemedDialog)
 END_MESSAGE_MAP()
 
 CEnchantStudioDlg::CEnchantStudioDlg(Engine::WorkspaceEngine& engine, int32_t enchantId, int32_t currentItemId, CWnd* parent)
-    : m_tmpl(L"Enchantment Curve & Odds Simulator", 540, 360),
+    : m_tmpl(L"Enchantment Curve & Odds Simulator", 580, 420, WS_CLIPCHILDREN | WS_CLIPSIBLINGS),
       m_engine(engine),
       m_enchantId(enchantId),
       m_itemId(currentItemId) {
@@ -1533,11 +1565,14 @@ BOOL CEnchantStudioDlg::OnInitDialog() {
     auto dluX = [base](int dlu) { return Theme::DluX(dlu, base); };
     auto dluY = [base](int dlu) { return Theme::DluY(dlu, base); };
 
-    const int clientW = dluX(545);
-    const int clientH = dluY(365);
-    CRect winRc(0, 0, clientW, clientH);
-    ::AdjustWindowRectEx(&winRc, GetStyle(), FALSE, GetExStyle());
-    SetWindowPos(nullptr, 0, 0, winRc.Width(), winRc.Height(), SWP_NOMOVE | SWP_NOZORDER);
+    const int clientW = dluX(580);
+    const int clientH = dluY(420);
+    CRect curClient, curWin;
+    GetClientRect(&curClient);
+    GetWindowRect(&curWin);
+    const int extraW = curWin.Width() - curClient.Width();
+    const int extraH = curWin.Height() - curClient.Height();
+    SetWindowPos(nullptr, 0, 0, clientW + extraW, clientH + extraH, SWP_NOMOVE | SWP_NOZORDER);
     CenterWindow();
 
     const auto* it = m_engine.Items().GetItem(m_itemId);
@@ -1812,6 +1847,982 @@ void CEnchantStudioDlg::RunMonteCarlo(int trials, int targetLvl, bool useJelly) 
 }
 
 void CEnchantStudioDlg::OnOK() {
+    CDialog::OnOK();
+}
+
+// ---------------------------------------------------------------------------
+// Helpers for BMP and Clipboard Image I/O
+// ---------------------------------------------------------------------------
+
+namespace {
+
+bool SaveBmp32(const std::filesystem::path& path, const Graphics::ImageBuffer& img) {
+    if (img.width == 0 || img.height == 0 || img.rgbaData.empty()) return false;
+    std::ofstream f(path, std::ios::binary | std::ios::trunc);
+    if (!f.is_open()) return false;
+
+    BITMAPFILEHEADER bfh{};
+    bfh.bfType = 0x4D42; // 'BM'
+    bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+    bfh.bfSize = bfh.bfOffBits + img.width * img.height * 4;
+
+    BITMAPINFOHEADER bih{};
+    bih.biSize = sizeof(BITMAPINFOHEADER);
+    bih.biWidth = static_cast<LONG>(img.width);
+    bih.biHeight = static_cast<LONG>(img.height); // Bottom-up
+    bih.biPlanes = 1;
+    bih.biBitCount = 32;
+    bih.biCompression = BI_RGB;
+    bih.biSizeImage = img.width * img.height * 4;
+
+    f.write(reinterpret_cast<const char*>(&bfh), sizeof(bfh));
+    f.write(reinterpret_cast<const char*>(&bih), sizeof(bih));
+
+    std::vector<uint8_t> row(img.width * 4);
+    for (int y = static_cast<int>(img.height) - 1; y >= 0; --y) {
+        const uint8_t* srcRow = &img.rgbaData[static_cast<size_t>(y) * img.width * 4];
+        for (uint32_t x = 0; x < img.width; ++x) {
+            row[x * 4 + 0] = srcRow[x * 4 + 2]; // B
+            row[x * 4 + 1] = srcRow[x * 4 + 1]; // G
+            row[x * 4 + 2] = srcRow[x * 4 + 0]; // R
+            row[x * 4 + 3] = srcRow[x * 4 + 3]; // A
+        }
+        f.write(reinterpret_cast<const char*>(row.data()), static_cast<std::streamsize>(row.size()));
+    }
+    return f.good();
+}
+
+bool LoadBmp32(const std::filesystem::path& path, Graphics::ImageBuffer& outImg) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f.is_open()) return false;
+
+    BITMAPFILEHEADER bfh{};
+    if (!f.read(reinterpret_cast<char*>(&bfh), sizeof(bfh))) return false;
+    if (bfh.bfType != 0x4D42) return false;
+
+    BITMAPINFOHEADER bih{};
+    if (!f.read(reinterpret_cast<char*>(&bih), sizeof(bih))) return false;
+    if (bih.biWidth <= 0 || bih.biHeight == 0) return false;
+
+    const bool bottomUp = (bih.biHeight > 0);
+    const uint32_t w = static_cast<uint32_t>(bih.biWidth);
+    const uint32_t h = static_cast<uint32_t>(std::abs(bih.biHeight));
+    const uint16_t bpp = bih.biBitCount;
+
+    if (bpp != 24 && bpp != 32) return false;
+
+    f.seekg(bfh.bfOffBits, std::ios::beg);
+    const size_t rowBytes = ((static_cast<size_t>(w) * bpp + 31) / 32) * 4;
+    std::vector<uint8_t> rowBuf(rowBytes);
+
+    outImg.width = w;
+    outImg.height = h;
+    outImg.rgbaData.resize(static_cast<size_t>(w) * h * 4);
+
+    for (uint32_t r = 0; r < h; ++r) {
+        const uint32_t y = bottomUp ? (h - 1 - r) : r;
+        if (!f.read(reinterpret_cast<char*>(rowBuf.data()), static_cast<std::streamsize>(rowBytes))) return false;
+        uint8_t* dst = &outImg.rgbaData[static_cast<size_t>(y) * w * 4];
+        for (uint32_t x = 0; x < w; ++x) {
+            if (bpp == 32) {
+                dst[x * 4 + 0] = rowBuf[x * 4 + 2]; // R
+                dst[x * 4 + 1] = rowBuf[x * 4 + 1]; // G
+                dst[x * 4 + 2] = rowBuf[x * 4 + 0]; // B
+                dst[x * 4 + 3] = rowBuf[x * 4 + 3]; // A
+            } else {
+                dst[x * 4 + 0] = rowBuf[x * 3 + 2]; // R
+                dst[x * 4 + 1] = rowBuf[x * 3 + 1]; // G
+                dst[x * 4 + 2] = rowBuf[x * 3 + 0]; // B
+                dst[x * 4 + 3] = 255;
+            }
+        }
+    }
+    return true;
+}
+
+bool ReadClipboardBitmap(Graphics::ImageBuffer& outImg) {
+    if (!::OpenClipboard(nullptr)) return false;
+    HBITMAP hBmp = static_cast<HBITMAP>(::GetClipboardData(CF_BITMAP));
+    if (!hBmp) {
+        ::CloseClipboard();
+        return false;
+    }
+
+    BITMAP bmp{};
+    ::GetObjectW(hBmp, sizeof(BITMAP), &bmp);
+    if (bmp.bmWidth <= 0 || bmp.bmHeight <= 0) {
+        ::CloseClipboard();
+        return false;
+    }
+
+    BITMAPINFO bi{};
+    bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bi.bmiHeader.biWidth = bmp.bmWidth;
+    bi.bmiHeader.biHeight = -bmp.bmHeight; // top-down
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    bi.bmiHeader.biCompression = BI_RGB;
+
+    HDC hdc = ::GetDC(nullptr);
+    outImg.width = static_cast<uint32_t>(bmp.bmWidth);
+    outImg.height = static_cast<uint32_t>(bmp.bmHeight);
+    outImg.rgbaData.resize(static_cast<size_t>(outImg.width) * outImg.height * 4);
+
+    std::vector<uint32_t> bgraPixels(static_cast<size_t>(outImg.width) * outImg.height);
+    ::GetDIBits(hdc, hBmp, 0, static_cast<UINT>(bmp.bmHeight), bgraPixels.data(), &bi, DIB_RGB_COLORS);
+    ::ReleaseDC(nullptr, hdc);
+    ::CloseClipboard();
+
+    for (size_t i = 0; i < bgraPixels.size(); ++i) {
+        const uint32_t p = bgraPixels[i];
+        outImg.rgbaData[i * 4 + 0] = static_cast<uint8_t>((p >> 16) & 0xFF); // R
+        outImg.rgbaData[i * 4 + 1] = static_cast<uint8_t>((p >> 8) & 0xFF);  // G
+        outImg.rgbaData[i * 4 + 2] = static_cast<uint8_t>(p & 0xFF);         // B
+        outImg.rgbaData[i * 4 + 3] = 255;                                   // A
+    }
+    return true;
+}
+
+} // namespace
+
+// ---------------------------------------------------------------------------
+// CActConverterDlg
+// ---------------------------------------------------------------------------
+
+BEGIN_MESSAGE_MAP(CActConverterDlg, CThemedDialog)
+    ON_BN_CLICKED(IDC_ACT_BROWSE_IN, &CActConverterDlg::OnBrowseInput)
+    ON_BN_CLICKED(IDC_ACT_CONVERT_SINGLE, &CActConverterDlg::OnConvertSingle)
+    ON_BN_CLICKED(IDC_ACT_BROWSE_BATCH, &CActConverterDlg::OnBrowseBatchDir)
+    ON_BN_CLICKED(IDC_ACT_CONVERT_BATCH, &CActConverterDlg::OnConvertBatch)
+END_MESSAGE_MAP()
+
+CActConverterDlg::CActConverterDlg(Engine::WorkspaceEngine& engine, CWnd* parent)
+    : m_tmpl(L"Eternity ACT Version 6 -> Version 5 Converter", 580, 440, WS_CLIPCHILDREN | WS_CLIPSIBLINGS),
+      m_engine(engine) {
+    InitModalIndirect(m_tmpl.Get(), parent);
+}
+
+BOOL CActConverterDlg::OnInitDialog() {
+    CDialog::OnInitDialog();
+
+    const int dpi = GetWindowDpi(GetSafeHwnd());
+    m_fonts.Build(dpi);
+    const CSize base = Theme::DialogBaseUnits(this, m_fonts.regular);
+
+    auto dluX = [base](int dlu) { return Theme::DluX(dlu, base); };
+    auto dluY = [base](int dlu) { return Theme::DluY(dlu, base); };
+
+    const int clientW = dluX(580);
+    const int clientH = dluY(440);
+    CRect curClient, curWin;
+    GetClientRect(&curClient);
+    GetWindowRect(&curWin);
+    const int extraW = curWin.Width() - curClient.Width();
+    const int extraH = curWin.Height() - curClient.Height();
+    SetWindowPos(nullptr, 0, 0, clientW + extraW, clientH + extraH, SWP_NOMOVE | SWP_NOZORDER);
+    CenterWindow();
+
+    m_lblHeader.Create(L"Dragon Nest Eternity ACT Version 6 to Version 5 Conversion Tool",
+                       WS_CHILD | WS_VISIBLE | SS_NOPREFIX,
+                       CRect(dluX(10), dluY(8), dluX(570), dluY(22)), this);
+    m_lblHeader.SetFont(&m_fonts.bold);
+
+    // Card 1: Single File Conversion
+    m_grpSingle.Create(L"Single .ACT File Conversion", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+                       CRect(dluX(10), dluY(26), dluX(570), dluY(116)), this);
+
+    m_lblInputFile.Create(L"Input ACT File:", WS_CHILD | WS_VISIBLE,
+                          CRect(dluX(18), dluY(42), dluX(100), dluY(54)), this);
+    m_lblInputFile.SetFont(&m_fonts.secondary);
+
+    m_edtInputFile.Create(WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_BORDER | ES_AUTOHSCROLL,
+                          CRect(dluX(104), dluY(40), dluX(476), dluY(54)), this, IDC_ACT_INPUT_EDIT);
+    m_edtInputFile.SetFont(&m_fonts.regular);
+
+    m_btnBrowseInput.Create(L"Browse...", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                            CRect(dluX(482), dluY(39), dluX(560), dluY(55)), this, IDC_ACT_BROWSE_IN);
+    m_btnBrowseInput.SetFont(&m_fonts.regular);
+
+    m_lblFileInfo.Create(L"Select an Eternity .act file to detect version and actions.",
+                         WS_CHILD | WS_VISIBLE | SS_NOPREFIX,
+                         CRect(dluX(18), dluY(60), dluX(476), dluY(84)), this);
+    m_lblFileInfo.SetFont(&m_fonts.regular);
+
+    m_btnConvertSingle.Create(L"Convert to v5", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                              CRect(dluX(482), dluY(60), dluX(560), dluY(84)), this, IDC_ACT_CONVERT_SINGLE);
+    m_btnConvertSingle.SetFont(&m_fonts.bold);
+
+    // Card 2: Batch Directory Conversion
+    m_grpBatch.Create(L"Batch Directory Conversion", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+                      CRect(dluX(10), dluY(122), dluX(570), dluY(210)), this);
+
+    m_lblBatchDir.Create(L"Target Folder:", WS_CHILD | WS_VISIBLE,
+                         CRect(dluX(18), dluY(138), dluX(100), dluY(150)), this);
+    m_lblBatchDir.SetFont(&m_fonts.secondary);
+
+    m_edtBatchDir.Create(WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_BORDER | ES_AUTOHSCROLL,
+                         CRect(dluX(104), dluY(136), dluX(476), dluY(150)), this, IDC_ACT_BATCH_EDIT);
+    m_edtBatchDir.SetFont(&m_fonts.regular);
+    if (!m_engine.Items().GetResourcePath().empty()) {
+        m_edtBatchDir.SetWindowTextW((m_engine.Items().GetResourcePath() / "char").wstring().c_str());
+    }
+
+    m_btnBrowseBatch.Create(L"Browse...", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                            CRect(dluX(482), dluY(135), dluX(560), dluY(151)), this, IDC_ACT_BROWSE_BATCH);
+    m_btnBrowseBatch.SetFont(&m_fonts.regular);
+
+    m_chkBackup.Create(L"Create .bak backup copy before overwriting original version 6 files",
+                       WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX,
+                       CRect(dluX(18), dluY(156), dluX(476), dluY(170)), this, IDC_ACT_BACKUP_CHK);
+    m_chkBackup.SetFont(&m_fonts.regular);
+    m_chkBackup.SetCheck(BST_CHECKED);
+
+    m_btnConvertBatch.Create(L"Scan & Convert All v6 Files", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                             CRect(dluX(18), dluY(176), dluX(200), dluY(200)), this, IDC_ACT_CONVERT_BATCH);
+    m_btnConvertBatch.SetFont(&m_fonts.bold);
+
+    // Card 3: Status & Results Log
+    m_grpResults.Create(L"Conversion Results & Diagnostic Log", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+                        CRect(dluX(10), dluY(216), dluX(570), dluY(400)), this);
+
+    m_edtLog.Create(WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | WS_BORDER |
+                    ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY,
+                    CRect(dluX(18), dluY(232), dluX(560), dluY(390)), this, IDC_ACT_LOG);
+    m_edtLog.SetFont(&m_fonts.mono);
+
+    m_btnClose.Create(L"Close", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                      CRect(dluX(500), dluY(410), dluX(570), dluY(432)), this, IDOK);
+    m_btnClose.SetFont(&m_fonts.regular);
+
+    AppendLog(L"ACT Converter initialized. Ready to process Dragon Nest .act files.");
+    return TRUE;
+}
+
+void CActConverterDlg::AppendLog(const std::wstring& line) {
+    if (!m_edtLog.GetSafeHwnd()) return;
+    CString existing;
+    m_edtLog.GetWindowTextW(existing);
+    existing += line.c_str();
+    existing += L"\r\n";
+    m_edtLog.SetWindowTextW(existing);
+    m_edtLog.LineScroll(m_edtLog.GetLineCount());
+}
+
+void CActConverterDlg::OnBrowseInput() {
+    CFileDialog dlg(TRUE, L"act", nullptr, OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
+                    L"Eternity Action Files (*.act)|*.act|All Files (*.*)|*.*||", this);
+    if (dlg.DoModal() == IDOK) {
+        const std::filesystem::path p = dlg.GetPathName().GetString();
+        m_edtInputFile.SetWindowTextW(p.wstring().c_str());
+
+        int32_t ver = 0, count = 0;
+        bool isManifest = false;
+        if (Graphics::ActConverter::ProbeActFile(p, ver, count, isManifest)) {
+            if (isManifest) {
+                m_lblFileInfo.SetWindowTextW(L"Status: Text manifest detected (references other .act files).");
+            } else if (ver == 6) {
+                m_lblFileInfo.SetWindowTextW(std::format(L"Status: Version 6 detected ({} actions). Ready to convert to v5.", count).c_str());
+            } else if (ver == 5) {
+                m_lblFileInfo.SetWindowTextW(std::format(L"Status: File is already Version 5 ({} actions).", count).c_str());
+            } else {
+                m_lblFileInfo.SetWindowTextW(std::format(L"Status: Version {} detected ({} actions).", ver, count).c_str());
+            }
+        } else {
+            m_lblFileInfo.SetWindowTextW(L"Status: Invalid or unreadable .act file.");
+        }
+    }
+}
+
+void CActConverterDlg::OnConvertSingle() {
+    CString pathStr;
+    m_edtInputFile.GetWindowTextW(pathStr);
+    const std::filesystem::path inPath = pathStr.GetString();
+    if (inPath.empty() || !std::filesystem::exists(inPath)) {
+        AfxMessageBox(L"Please select a valid .act file first.", MB_ICONWARNING);
+        return;
+    }
+
+    const bool backup = (m_chkBackup.GetCheck() == BST_CHECKED);
+    const auto res = Graphics::ActConverter::ConvertFileV6ToV5(inPath, inPath, backup);
+    AppendLog(std::format(L"[{}] {}", res.success ? L"SUCCESS" : L"INFO", Utf8ToWide(res.message).GetString()));
+
+    if (res.success) {
+        m_lblFileInfo.SetWindowTextW(L"Status: Successfully converted to Version 5!");
+        AfxMessageBox(std::format(L"File successfully converted to Version 5!\nActions: {}\nSaved: {} bytes",
+                                  res.actionCount, (res.bytesBefore > res.bytesAfter) ? (res.bytesBefore - res.bytesAfter) : 0).c_str(),
+                      MB_ICONINFORMATION);
+    }
+}
+
+void CActConverterDlg::OnBrowseBatchDir() {
+    CFolderPickerDialog dlg(nullptr, OFN_FILEMUSTEXIST, this);
+    if (dlg.DoModal() == IDOK) {
+        m_edtBatchDir.SetWindowTextW(dlg.GetPathName());
+    }
+}
+
+void CActConverterDlg::OnConvertBatch() {
+    CString dirStr;
+    m_edtBatchDir.GetWindowTextW(dirStr);
+    const std::filesystem::path dir = dirStr.GetString();
+    if (dir.empty() || !std::filesystem::exists(dir)) {
+        AfxMessageBox(L"Please select a valid directory first.", MB_ICONWARNING);
+        return;
+    }
+
+    AppendLog(std::format(L"Scanning directory '{}' for version 6 .act files...", dir.wstring()));
+    const bool backup = (m_chkBackup.GetCheck() == BST_CHECKED);
+    const auto results = Graphics::ActConverter::ConvertDirectoryV6ToV5(dir, true, backup);
+
+    int successCount = 0;
+    size_t totalSavedBytes = 0;
+    for (size_t i = 0; i < results.size(); ++i) {
+        const auto& r = results[i];
+        if (r.success) {
+            ++successCount;
+            const size_t diff = (r.bytesBefore > r.bytesAfter) ? (r.bytesBefore - r.bytesAfter) : 0;
+            totalSavedBytes += diff;
+            AppendLog(std::format(L"  [OK] {} -> v5 ({} actions, -{} bytes)",
+                                  r.filePath.filename().wstring(), r.actionCount, diff));
+        } else {
+            AppendLog(std::format(L"  [SKIP] {}: {}", r.filePath.filename().wstring(), Utf8ToWide(r.message).GetString()));
+        }
+    }
+
+    AppendLog(std::format(L"Batch finished: {} version 6 files converted to version 5 (saved {} total bytes).",
+                          successCount, totalSavedBytes));
+
+    AfxMessageBox(std::format(L"Batch conversion completed!\nConverted {} files to ACT Version 5.\nTotal bytes saved: {}",
+                              successCount, totalSavedBytes).c_str(), MB_ICONINFORMATION);
+}
+
+void CActConverterDlg::OnOK() {
+    CDialog::OnOK();
+}
+
+// ---------------------------------------------------------------------------
+// CIconCanvasWnd
+// ---------------------------------------------------------------------------
+
+BEGIN_MESSAGE_MAP(CIconCanvasWnd, CWnd)
+    ON_WM_PAINT()
+    ON_WM_ERASEBKGND()
+    ON_WM_LBUTTONDOWN()
+    ON_WM_MOUSEMOVE()
+    ON_WM_LBUTTONUP()
+    ON_WM_RBUTTONDOWN()
+END_MESSAGE_MAP()
+
+void CIconCanvasWnd::SetIconBuffer(const Graphics::ImageBuffer& img) {
+    if (img.width == 50 && img.height == 50 && img.rgbaData.size() == 50 * 50 * 4) {
+        m_icon = img;
+    } else if (img.width > 0 && img.height > 0) {
+        Graphics::DDSParser::ScaleImageBilinear(img, 50, 50, m_icon);
+    } else {
+        m_icon.width = 50;
+        m_icon.height = 50;
+        m_icon.rgbaData.assign(50 * 50 * 4, 0); // Transparent black
+    }
+    Invalidate(FALSE);
+}
+
+void CIconCanvasWnd::SetCurrentColor(COLORREF color, uint8_t alpha) noexcept {
+    m_color = color;
+    m_alpha = alpha;
+}
+
+BOOL CIconCanvasWnd::OnEraseBkgnd(CDC* /*pDC*/) {
+    return TRUE; // All rendering in OnPaint
+}
+
+void CIconCanvasWnd::OnPaint() {
+    CPaintDC dc(this);
+    CRect rc;
+    GetClientRect(&rc);
+    if (rc.Width() <= 0 || rc.Height() <= 0) return;
+
+    CDC memDC;
+    memDC.CreateCompatibleDC(&dc);
+    CBitmap memBmp;
+    memBmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
+    CBitmap* oldBmp = memDC.SelectObject(&memBmp);
+
+    const int cellW = rc.Width() / 50;
+    const int cellH = rc.Height() / 50;
+
+    // Draw background checkerboard pattern for transparency
+    for (int y = 0; y < 50; ++y) {
+        for (int x = 0; x < 50; ++x) {
+            const bool alt = ((x / 2 + y / 2) % 2 == 0);
+            const COLORREF bg = alt ? RGB(38, 40, 46) : RGB(28, 30, 34);
+            memDC.FillSolidRect(x * cellW, y * cellH, cellW, cellH, bg);
+        }
+    }
+
+    // Draw 50x50 icon pixels
+    if (m_icon.width == 50 && m_icon.height == 50 && m_icon.rgbaData.size() >= 50 * 50 * 4) {
+        for (int y = 0; y < 50; ++y) {
+            for (int x = 0; x < 50; ++x) {
+                const size_t off = (static_cast<size_t>(y) * 50 + x) * 4;
+                const uint8_t r = m_icon.rgbaData[off + 0];
+                const uint8_t g = m_icon.rgbaData[off + 1];
+                const uint8_t b = m_icon.rgbaData[off + 2];
+                const uint8_t a = m_icon.rgbaData[off + 3];
+
+                if (a > 0) {
+                    if (a == 255) {
+                        memDC.FillSolidRect(x * cellW, y * cellH, cellW, cellH, RGB(r, g, b));
+                    } else {
+                        // Blend against checkerboard
+                        const bool alt = ((x / 2 + y / 2) % 2 == 0);
+                        const COLORREF bgCol = alt ? RGB(38, 40, 46) : RGB(28, 30, 34);
+                        const float af = a / 255.0f;
+                        const uint8_t br = static_cast<uint8_t>(r * af + GetRValue(bgCol) * (1.0f - af));
+                        const uint8_t bg = static_cast<uint8_t>(g * af + GetGValue(bgCol) * (1.0f - af));
+                        const uint8_t bb = static_cast<uint8_t>(b * af + GetBValue(bgCol) * (1.0f - af));
+                        memDC.FillSolidRect(x * cellW, y * cellH, cellW, cellH, RGB(br, bg, bb));
+                    }
+                }
+            }
+        }
+    }
+
+    // Optional pixel grid lines
+    if (m_showGrid && cellW >= 4) {
+        CPen gridPen(PS_SOLID, 1, RGB(48, 52, 60));
+        CPen* oldPen = memDC.SelectObject(&gridPen);
+        for (int x = 0; x <= 50; ++x) {
+            memDC.MoveTo(x * cellW, 0);
+            memDC.LineTo(x * cellW, 50 * cellH);
+        }
+        for (int y = 0; y <= 50; ++y) {
+            memDC.MoveTo(0, y * cellH);
+            memDC.LineTo(50 * cellW, y * cellH);
+        }
+        memDC.SelectObject(oldPen);
+    }
+
+    dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
+    memDC.SelectObject(oldBmp);
+}
+
+void CIconCanvasWnd::ApplyToolAt(CPoint pt, bool isRightClick) {
+    CRect rc;
+    GetClientRect(&rc);
+    if (rc.Width() <= 0 || rc.Height() <= 0) return;
+
+    const int cellW = rc.Width() / 50;
+    const int cellH = rc.Height() / 50;
+    if (cellW <= 0 || cellH <= 0) return;
+
+    const int px = std::clamp(static_cast<int>(pt.x / cellW), 0, 49);
+    const int py = std::clamp(static_cast<int>(pt.y / cellH), 0, 49);
+
+    if (m_icon.width != 50 || m_icon.height != 50 || m_icon.rgbaData.size() < 50 * 50 * 4) {
+        m_icon.width = 50;
+        m_icon.height = 50;
+        m_icon.rgbaData.assign(50 * 50 * 4, 0);
+    }
+
+    const size_t off = (static_cast<size_t>(py) * 50 + px) * 4;
+
+    if (isRightClick || m_tool == Tool::Eraser) {
+        m_icon.rgbaData[off + 0] = 0;
+        m_icon.rgbaData[off + 1] = 0;
+        m_icon.rgbaData[off + 2] = 0;
+        m_icon.rgbaData[off + 3] = 0;
+    } else if (m_tool == Tool::Pencil) {
+        m_icon.rgbaData[off + 0] = GetRValue(m_color);
+        m_icon.rgbaData[off + 1] = GetGValue(m_color);
+        m_icon.rgbaData[off + 2] = GetBValue(m_color);
+        m_icon.rgbaData[off + 3] = m_alpha;
+    } else if (m_tool == Tool::Eyedropper) {
+        m_color = RGB(m_icon.rgbaData[off + 0], m_icon.rgbaData[off + 1], m_icon.rgbaData[off + 2]);
+        m_alpha = m_icon.rgbaData[off + 3];
+    } else if (m_tool == Tool::Fill) {
+        uint32_t target = 0;
+        std::memcpy(&target, &m_icon.rgbaData[off], 4);
+        uint32_t fill = (static_cast<uint32_t>(m_alpha) << 24) |
+                        (static_cast<uint32_t>(GetBValue(m_color)) << 16) |
+                        (static_cast<uint32_t>(GetGValue(m_color)) << 8) |
+                        static_cast<uint32_t>(GetRValue(m_color));
+        if (target != fill) {
+            FloodFill(px, py, target, fill);
+        }
+    }
+
+    Invalidate(FALSE);
+    if (m_onChange) m_onChange();
+}
+
+void CIconCanvasWnd::FloodFill(int startX, int startY, uint32_t targetColor, uint32_t fillColor) {
+    std::vector<std::pair<int, int>> stack;
+    stack.push_back({startX, startY});
+
+    while (!stack.empty()) {
+        const auto [x, y] = stack.back();
+        stack.pop_back();
+
+        if (x < 0 || x >= 50 || y < 0 || y >= 50) continue;
+        const size_t off = (static_cast<size_t>(y) * 50 + x) * 4;
+        uint32_t cur = 0;
+        std::memcpy(&cur, &m_icon.rgbaData[off], 4);
+        if (cur != targetColor) continue;
+
+        std::memcpy(&m_icon.rgbaData[off], &fillColor, 4);
+
+        stack.push_back({x + 1, y});
+        stack.push_back({x - 1, y});
+        stack.push_back({x, y + 1});
+        stack.push_back({x, y - 1});
+    }
+}
+
+void CIconCanvasWnd::OnLButtonDown(UINT /*nFlags*/, CPoint point) {
+    SetCapture();
+    m_drawing = true;
+    ApplyToolAt(point, false);
+}
+
+void CIconCanvasWnd::OnMouseMove(UINT /*nFlags*/, CPoint point) {
+    if (m_drawing && (m_tool == Tool::Pencil || m_tool == Tool::Eraser)) {
+        ApplyToolAt(point, false);
+    }
+}
+
+void CIconCanvasWnd::OnLButtonUp(UINT /*nFlags*/, CPoint /*point*/) {
+    if (m_drawing) {
+        m_drawing = false;
+        ::ReleaseCapture();
+    }
+}
+
+void CIconCanvasWnd::OnRButtonDown(UINT /*nFlags*/, CPoint point) {
+    ApplyToolAt(point, true);
+}
+
+// ---------------------------------------------------------------------------
+// CIconEditorDlg
+// ---------------------------------------------------------------------------
+
+BEGIN_MESSAGE_MAP(CIconEditorDlg, CThemedDialog)
+    ON_BN_CLICKED(IDC_ICON_TOOL_PENCIL, &CIconEditorDlg::OnToolPencil)
+    ON_BN_CLICKED(IDC_ICON_TOOL_ERASER, &CIconEditorDlg::OnToolEraser)
+    ON_BN_CLICKED(IDC_ICON_TOOL_FILL, &CIconEditorDlg::OnToolFill)
+    ON_BN_CLICKED(IDC_ICON_TOOL_EYEDROPPER, &CIconEditorDlg::OnToolEyedropper)
+    ON_BN_CLICKED(IDC_ICON_TOOL_CLEAR, &CIconEditorDlg::OnToolClear)
+    ON_BN_CLICKED(IDC_ICON_GRID_CHK, &CIconEditorDlg::OnToggleGrid)
+
+    ON_COMMAND_RANGE(IDC_ICON_PALETTE_BASE, IDC_ICON_PALETTE_BASE + 15, &CIconEditorDlg::OnColorPaletteBtn)
+    ON_CBN_SELCHANGE(IDC_ICON_RANK_COMBO, &CIconEditorDlg::OnRankBorderChanged)
+    ON_BN_CLICKED(IDC_ICON_APPLY_BORDER, &CIconEditorDlg::OnRankBorderChanged)
+
+    ON_BN_CLICKED(IDC_ICON_IMPORT_BTN, &CIconEditorDlg::OnImportImage)
+    ON_BN_CLICKED(IDC_ICON_PASTE_BTN, &CIconEditorDlg::OnPasteClipboard)
+    ON_BN_CLICKED(IDC_ICON_EXP_PNG, &CIconEditorDlg::OnExportPng)
+    ON_BN_CLICKED(IDC_ICON_EXP_DDS, &CIconEditorDlg::OnExportDds)
+    ON_BN_CLICKED(IDC_ICON_ASSIGN_BTN, &CIconEditorDlg::OnAssignToItem)
+
+    ON_WM_PAINT()
+    ON_WM_DRAWITEM()
+END_MESSAGE_MAP()
+
+CIconEditorDlg::CIconEditorDlg(Engine::WorkspaceEngine& engine, int32_t targetItemId, int32_t initialIconIndex, CWnd* parent)
+    : m_tmpl(L"Item Icon Studio & Pixel Creator", 680, 480, WS_CLIPCHILDREN | WS_CLIPSIBLINGS),
+      m_engine(engine),
+      m_targetItemId(targetItemId),
+      m_iconIndex(initialIconIndex) {
+    InitModalIndirect(m_tmpl.Get(), parent);
+    const auto* it = m_engine.Items().GetItem(m_targetItemId);
+    if (it) m_itemRank = it->rank;
+}
+
+BOOL CIconEditorDlg::OnInitDialog() {
+    CDialog::OnInitDialog();
+
+    const int dpi = GetWindowDpi(GetSafeHwnd());
+    m_fonts.Build(dpi);
+    const CSize base = Theme::DialogBaseUnits(this, m_fonts.regular);
+
+    auto dluX = [base](int dlu) { return Theme::DluX(dlu, base); };
+    auto dluY = [base](int dlu) { return Theme::DluY(dlu, base); };
+
+    const int clientW = dluX(680);
+    const int clientH = dluY(480);
+    CRect curClient, curWin;
+    GetClientRect(&curClient);
+    GetWindowRect(&curWin);
+    const int extraW = curWin.Width() - curClient.Width();
+    const int extraH = curWin.Height() - curClient.Height();
+    SetWindowPos(nullptr, 0, 0, clientW + extraW, clientH + extraH, SWP_NOMOVE | SWP_NOZORDER);
+    CenterWindow();
+
+    const auto* it = m_engine.Items().GetItem(m_targetItemId);
+    std::wstring hdr = L"Item Icon Studio";
+    if (it) {
+        hdr = std::format(L"Item Icon Studio: #{} '{}' (Current Icon Index: {})",
+                          it->id, Utf8ToWide(it->name).GetString(), m_iconIndex);
+    }
+    m_lblHeader.Create(hdr.c_str(), WS_CHILD | WS_VISIBLE | SS_NOPREFIX,
+                       CRect(dluX(10), dluY(8), dluX(670), dluY(22)), this);
+    m_lblHeader.SetFont(&m_fonts.bold);
+
+    // Left Pane: Drawing Canvas (50x50 icon scaled to 8x = 400x400 canvas)
+    const int canvasSizeDlu = 210;
+    m_grpCanvas.Create(L"50x50 Pixel Icon Canvas", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+                       CRect(dluX(10), dluY(26), dluX(10 + canvasSizeDlu + 12), dluY(26 + canvasSizeDlu + 32)), this);
+
+    m_canvas.Create(nullptr, L"", WS_CHILD | WS_VISIBLE | WS_BORDER,
+                    CRect(dluX(16), dluY(42), dluX(16 + canvasSizeDlu), dluY(42 + canvasSizeDlu)), this, IDC_STATIC);
+    m_canvas.SetOnChangeCallback([this]() { UpdatePreviews(); });
+
+    m_chkGrid.Create(L"Show Pixel Grid (8x Zoom)", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX,
+                     CRect(dluX(16), dluY(42 + canvasSizeDlu + 6), dluX(16 + canvasSizeDlu), dluY(42 + canvasSizeDlu + 20)), this, IDC_ICON_GRID_CHK);
+    m_chkGrid.SetFont(&m_fonts.regular);
+    m_chkGrid.SetCheck(BST_CHECKED);
+
+    // Middle Pane: Tools & Colors
+    const int midX = 10 + canvasSizeDlu + 18;
+    const int midW = 220;
+
+    m_grpTools.Create(L"Drawing Tools", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+                      CRect(dluX(midX), dluY(26), dluX(midX + midW), dluY(100)), this);
+
+    const int btnW = 48;
+    m_btnToolPencil.Create(L"Pencil", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                           CRect(dluX(midX + 8), dluY(42), dluX(midX + 8 + btnW), dluY(62)), this, IDC_ICON_TOOL_PENCIL);
+    m_btnToolPencil.SetFont(&m_fonts.regular);
+
+    m_btnToolEraser.Create(L"Eraser", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                           CRect(dluX(midX + 60), dluY(42), dluX(midX + 60 + btnW), dluY(62)), this, IDC_ICON_TOOL_ERASER);
+    m_btnToolEraser.SetFont(&m_fonts.regular);
+
+    m_btnToolFill.Create(L"Fill", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                         CRect(dluX(midX + 112), dluY(42), dluX(midX + 112 + btnW), dluY(62)), this, IDC_ICON_TOOL_FILL);
+    m_btnToolFill.SetFont(&m_fonts.regular);
+
+    m_btnToolEyedropper.Create(L"Pick", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                               CRect(dluX(midX + 164), dluY(42), dluX(midX + 164 + btnW), dluY(62)), this, IDC_ICON_TOOL_EYEDROPPER);
+    m_btnToolEyedropper.SetFont(&m_fonts.regular);
+
+    m_btnToolClear.Create(L"Clear Canvas", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                          CRect(dluX(midX + 8), dluY(68), dluX(midX + midW - 8), dluY(88)), this, IDC_ICON_TOOL_CLEAR);
+    m_btnToolClear.SetFont(&m_fonts.regular);
+
+    // Color Palette
+    m_grpColors.Create(L"Palette & Preset Rank Colors", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+                       CRect(dluX(midX), dluY(106), dluX(midX + midW), dluY(196)), this);
+
+    const COLORREF kColors[16] = {
+        RGB(255, 255, 255), RGB(200, 200, 200), RGB(128, 128, 128), RGB(0, 0, 0),
+        RGB(50, 205, 50),   RGB(30, 144, 255),  RGB(255, 140, 0),   RGB(186, 85, 211),
+        RGB(220, 20, 60),   RGB(255, 215, 0),   RGB(255, 99, 71),   RGB(0, 255, 255),
+        RGB(139, 69, 19),   RGB(255, 192, 203), RGB(75, 0, 130),   RGB(255, 255, 0)
+    };
+
+    for (int i = 0; i < 16; ++i) {
+        const int col = i % 8;
+        const int row = i / 8;
+        const int bx = midX + 8 + col * 26;
+        const int by = 124 + row * 26;
+        m_paletteButtons[i].Create(L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
+                                   CRect(dluX(bx), dluY(by), dluX(bx + 22), dluY(by + 22)), this,
+                                   IDC_ICON_PALETTE_BASE + i);
+    }
+
+    m_lblCurColor.Create(L"Active Color: White (255, 255, 255)", WS_CHILD | WS_VISIBLE | SS_NOPREFIX,
+                         CRect(dluX(midX + 8), dluY(178), dluX(midX + midW - 8), dluY(190)), this);
+    m_lblCurColor.SetFont(&m_fonts.secondary);
+
+    // Rank Border Overlay
+    m_grpRankBorder.Create(L"Rank Border Overlay", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+                           CRect(dluX(midX), dluY(202), dluX(midX + midW), dluY(268)), this);
+
+    m_lblRankBorder.Create(L"Rank Border:", WS_CHILD | WS_VISIBLE,
+                           CRect(dluX(midX + 8), dluY(220), dluX(midX + 70), dluY(232)), this);
+    m_lblRankBorder.SetFont(&m_fonts.secondary);
+
+    m_cmbRankBorder.Create(WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL,
+                           CRect(dluX(midX + 74), dluY(218), dluX(midX + midW - 8), dluY(180)), this, IDC_ICON_RANK_COMBO);
+    m_cmbRankBorder.SetFont(&m_fonts.regular);
+    m_cmbRankBorder.AddString(L"0 - None (Raw Tile)");
+    m_cmbRankBorder.AddString(L"1 - Magic (Green)");
+    m_cmbRankBorder.AddString(L"2 - Rare (Blue)");
+    m_cmbRankBorder.AddString(L"3 - Epic (Orange)");
+    m_cmbRankBorder.AddString(L"4 - Unique (Purple)");
+    m_cmbRankBorder.AddString(L"5 - Legend (Red)");
+    m_cmbRankBorder.AddString(L"6 - Divine (Gold)");
+    m_cmbRankBorder.SetCurSel(std::clamp(m_itemRank, 0, 6));
+
+    m_btnApplyBorder.Create(L"Apply Border to Canvas", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                            CRect(dluX(midX + 8), dluY(242), dluX(midX + midW - 8), dluY(260)), this, IDC_ICON_APPLY_BORDER);
+    m_btnApplyBorder.SetFont(&m_fonts.regular);
+
+    // Right Pane: Previews & Actions
+    const int rightX = midX + midW + 10;
+
+    m_grpPreviews.Create(L"Actual Scale Previews", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+                         CRect(dluX(rightX), dluY(26), dluX(670), dluY(130)), this);
+
+    m_lblPreview1x.Create(L"1:1 (50x50):", WS_CHILD | WS_VISIBLE,
+                          CRect(dluX(rightX + 8), dluY(42), dluX(rightX + 80), dluY(54)), this);
+    m_lblPreview1x.SetFont(&m_fonts.secondary);
+
+    m_lblPreview2x.Create(L"2:1 (100x100):", WS_CHILD | WS_VISIBLE,
+                          CRect(dluX(rightX + 80), dluY(42), dluX(660), dluY(54)), this);
+    m_lblPreview2x.SetFont(&m_fonts.secondary);
+
+    // Actions Card
+    m_grpActions.Create(L"Import, Export & Assign", WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+                        CRect(dluX(rightX), dluY(136), dluX(670), dluY(430)), this);
+
+    m_btnImport.Create(L"Import Image (DDS / BMP)...", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                       CRect(dluX(rightX + 8), dluY(154), dluX(662), dluY(178)), this, IDC_ICON_IMPORT_BTN);
+    m_btnImport.SetFont(&m_fonts.regular);
+
+    m_btnPaste.Create(L"Paste from Clipboard", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                      CRect(dluX(rightX + 8), dluY(184), dluX(662), dluY(208)), this, IDC_ICON_PASTE_BTN);
+    m_btnPaste.SetFont(&m_fonts.regular);
+
+    m_btnExportPng.Create(L"Export as BMP...", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                          CRect(dluX(rightX + 8), dluY(214), dluX(662), dluY(238)), this, IDC_ICON_EXP_PNG);
+    m_btnExportPng.SetFont(&m_fonts.regular);
+
+    m_btnExportDds.Create(L"Export as DDS (RGBA32)...", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                          CRect(dluX(rightX + 8), dluY(244), dluX(662), dluY(268)), this, IDC_ICON_EXP_DDS);
+    m_btnExportDds.SetFont(&m_fonts.regular);
+
+    m_btnAssign.Create(L"Assign Icon to Current Item", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                       CRect(dluX(rightX + 8), dluY(280), dluX(662), dluY(310)), this, IDC_ICON_ASSIGN_BTN);
+    m_btnAssign.SetFont(&m_fonts.bold);
+
+    m_btnClose.Create(L"Close Studio", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                      CRect(dluX(600), dluY(446), dluX(670), dluY(470)), this, IDOK);
+    m_btnClose.SetFont(&m_fonts.regular);
+
+    Graphics::ImageBuffer initTile;
+    if (m_engine.GetItemIcon(m_iconIndex, initTile)) {
+        m_canvas.SetIconBuffer(initTile);
+    } else {
+        Graphics::ImageBuffer blank;
+        blank.width = 50; blank.height = 50;
+        blank.rgbaData.assign(50 * 50 * 4, 0);
+        m_canvas.SetIconBuffer(blank);
+    }
+
+    return TRUE;
+}
+
+void CIconEditorDlg::OnToolPencil() { m_canvas.SetCurrentTool(CIconCanvasWnd::Tool::Pencil); }
+void CIconEditorDlg::OnToolEraser() { m_canvas.SetCurrentTool(CIconCanvasWnd::Tool::Eraser); }
+void CIconEditorDlg::OnToolFill() { m_canvas.SetCurrentTool(CIconCanvasWnd::Tool::Fill); }
+void CIconEditorDlg::OnToolEyedropper() { m_canvas.SetCurrentTool(CIconCanvasWnd::Tool::Eyedropper); }
+
+void CIconEditorDlg::OnToolClear() {
+    if (AfxMessageBox(L"Clear the entire canvas to transparent?", MB_YESNO | MB_ICONQUESTION) == IDYES) {
+        Graphics::ImageBuffer blank;
+        blank.width = 50; blank.height = 50;
+        blank.rgbaData.assign(50 * 50 * 4, 0);
+        m_canvas.SetIconBuffer(blank);
+        UpdatePreviews();
+    }
+}
+
+void CIconEditorDlg::OnToggleGrid() {
+    m_canvas.SetShowGrid(m_chkGrid.GetCheck() == BST_CHECKED);
+}
+
+void CIconEditorDlg::OnColorPaletteBtn(UINT nID) {
+    const UINT idx = nID - IDC_ICON_PALETTE_BASE;
+    const COLORREF kColors[16] = {
+        RGB(255, 255, 255), RGB(200, 200, 200), RGB(128, 128, 128), RGB(0, 0, 0),
+        RGB(50, 205, 50),   RGB(30, 144, 255),  RGB(255, 140, 0),   RGB(186, 85, 211),
+        RGB(220, 20, 60),   RGB(255, 215, 0),   RGB(255, 99, 71),   RGB(0, 255, 255),
+        RGB(139, 69, 19),   RGB(255, 192, 203), RGB(75, 0, 130),   RGB(255, 255, 0)
+    };
+    if (idx < 16) {
+        SetActiveColorUI(kColors[idx]);
+    }
+}
+
+void CIconEditorDlg::SetActiveColorUI(COLORREF col) {
+    m_canvas.SetCurrentColor(col, 255);
+    m_canvas.SetCurrentTool(CIconCanvasWnd::Tool::Pencil);
+    m_lblCurColor.SetWindowTextW(std::format(L"Active Color: RGB({}, {}, {})",
+                                             GetRValue(col), GetGValue(col), GetBValue(col)).c_str());
+}
+
+void CIconEditorDlg::OnRankBorderChanged() {
+    const int rank = m_cmbRankBorder.GetCurSel();
+    if (rank > 0) {
+        Graphics::DDSParser::ApplyRankBorder(m_canvas.GetIconBuffer(), rank);
+        m_canvas.Invalidate(FALSE);
+        UpdatePreviews();
+    }
+}
+
+void CIconEditorDlg::OnImportImage() {
+    CFileDialog dlg(TRUE, nullptr, nullptr, OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
+                    L"Supported Image Files (*.dds;*.bmp)|*.dds;*.bmp|DirectDraw Surface (*.dds)|*.dds|Bitmap (*.bmp)|*.bmp|All Files (*.*)|*.*||", this);
+    if (dlg.DoModal() == IDOK) {
+        const std::filesystem::path p = dlg.GetPathName().GetString();
+        Graphics::ImageBuffer loaded;
+        bool ok = false;
+
+        if (_stricmp(p.extension().string().c_str(), ".dds") == 0) {
+            ok = Graphics::DDSParser::DecodeFile(p, loaded);
+        } else if (_stricmp(p.extension().string().c_str(), ".bmp") == 0) {
+            ok = LoadBmp32(p, loaded);
+        }
+
+        if (ok) {
+            m_canvas.SetIconBuffer(loaded);
+            UpdatePreviews();
+            AfxMessageBox(std::format(L"Image loaded and rescaled to 50x50 icon format.\nOriginal size: {}x{}",
+                                      loaded.width, loaded.height).c_str(), MB_ICONINFORMATION);
+        } else {
+            AfxMessageBox(L"Failed to decode image file (ensure file is valid 32-bit BMP or DDS).", MB_ICONERROR);
+        }
+    }
+}
+
+void CIconEditorDlg::OnPasteClipboard() {
+    Graphics::ImageBuffer loaded;
+    if (ReadClipboardBitmap(loaded)) {
+        m_canvas.SetIconBuffer(loaded);
+        UpdatePreviews();
+        AfxMessageBox(std::format(L"Pasted and rescaled image from clipboard into 50x50 icon canvas.\nSource: {}x{}",
+                                  loaded.width, loaded.height).c_str(), MB_ICONINFORMATION);
+    } else {
+        AfxMessageBox(L"No valid bitmap data found on the clipboard.", MB_ICONINFORMATION);
+    }
+}
+
+void CIconEditorDlg::OnExportPng() {
+    CFileDialog dlg(FALSE, L"bmp", L"custom_icon.bmp", OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY,
+                    L"Bitmap Image (*.bmp)|*.bmp||", this);
+    if (dlg.DoModal() == IDOK) {
+        const std::filesystem::path p = dlg.GetPathName().GetString();
+        if (SaveBmp32(p, m_canvas.GetIconBuffer())) {
+            AfxMessageBox(L"Icon successfully saved as 32-bit BMP image.", MB_ICONINFORMATION);
+        } else {
+            AfxMessageBox(L"Failed to save BMP image.", MB_ICONERROR);
+        }
+    }
+}
+
+void CIconEditorDlg::OnExportDds() {
+    CFileDialog dlg(FALSE, L"dds", L"custom_icon.dds", OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY,
+                    L"DirectDraw Surface (*.dds)|*.dds||", this);
+    if (dlg.DoModal() == IDOK) {
+        const std::filesystem::path p = dlg.GetPathName().GetString();
+        if (Graphics::DDSParser::SaveFileRGBA32(p, m_canvas.GetIconBuffer())) {
+            AfxMessageBox(L"Icon successfully saved as 32-bit RGBA DDS texture.", MB_ICONINFORMATION);
+        } else {
+            AfxMessageBox(L"Failed to save DDS texture.", MB_ICONERROR);
+        }
+    }
+}
+
+void CIconEditorDlg::OnAssignToItem() {
+    const auto& icon = m_canvas.GetIconBuffer();
+    if (m_engine.SetCustomItemIcon(m_iconIndex, icon)) {
+        AfxMessageBox(std::format(L"Custom icon successfully assigned to Item #{} (Icon Index: {})!\nSaved to workspace custom icon storage.",
+                                  m_targetItemId, m_iconIndex).c_str(), MB_ICONINFORMATION);
+        EndDialog(IDOK);
+    } else {
+        AfxMessageBox(L"Failed to assign icon to workspace engine.", MB_ICONERROR);
+    }
+}
+
+void CIconEditorDlg::UpdatePreviews() {
+    Invalidate(FALSE);
+}
+
+void CIconEditorDlg::OnPaint() {
+    CPaintDC dc(this);
+
+    const auto& icon = m_canvas.GetIconBuffer();
+    if (icon.width != 50 || icon.height != 50 || icon.rgbaData.size() < 50 * 50 * 4) {
+        return;
+    }
+
+    const int dpi = GetWindowDpi(GetSafeHwnd());
+    const CSize base = Theme::DialogBaseUnits(this, m_fonts.regular);
+    auto dluX = [base](int dlu) { return Theme::DluX(dlu, base); };
+    auto dluY = [base](int dlu) { return Theme::DluY(dlu, base); };
+
+    const int midX = 10 + 210 + 18;
+    const int rightX = midX + 220 + 10;
+
+    const int p1x = dluX(rightX + 8);
+    const int p1y = dluY(56);
+    const int p2x = dluX(rightX + 70);
+    const int p2y = dluY(56);
+
+    // 1:1 preview (50x50)
+    for (int y = 0; y < 50; ++y) {
+        for (int x = 0; x < 50; ++x) {
+            const size_t off = (static_cast<size_t>(y) * 50 + x) * 4;
+            const uint8_t r = icon.rgbaData[off + 0];
+            const uint8_t g = icon.rgbaData[off + 1];
+            const uint8_t b = icon.rgbaData[off + 2];
+            const uint8_t a = icon.rgbaData[off + 3];
+            if (a > 0) {
+                dc.SetPixel(p1x + x, p1y + y, RGB(r, g, b));
+            } else {
+                dc.SetPixel(p1x + x, p1y + y, RGB(30, 32, 36));
+            }
+        }
+    }
+    CRect rc1(p1x - 1, p1y - 1, p1x + 51, p1y + 51);
+    dc.Draw3dRect(&rc1, Theme::kBorder, Theme::kBorder);
+
+    // 2:1 preview (100x100)
+    for (int y = 0; y < 50; ++y) {
+        for (int x = 0; x < 50; ++x) {
+            const size_t off = (static_cast<size_t>(y) * 50 + x) * 4;
+            const uint8_t r = icon.rgbaData[off + 0];
+            const uint8_t g = icon.rgbaData[off + 1];
+            const uint8_t b = icon.rgbaData[off + 2];
+            const uint8_t a = icon.rgbaData[off + 3];
+            const COLORREF col = (a > 0) ? RGB(r, g, b) : RGB(30, 32, 36);
+            dc.FillSolidRect(p2x + x * 2, p2y + y * 2, 2, 2, col);
+        }
+    }
+    CRect rc2(p2x - 1, p2y - 1, p2x + 101, p2y + 101);
+    dc.Draw3dRect(&rc2, Theme::kBorder, Theme::kBorder);
+}
+
+void CIconEditorDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS) {
+    if (lpDIS && lpDIS->CtlType == ODT_BUTTON &&
+        lpDIS->CtlID >= IDC_ICON_PALETTE_BASE &&
+        lpDIS->CtlID < IDC_ICON_PALETTE_BASE + 16) {
+        const UINT idx = lpDIS->CtlID - IDC_ICON_PALETTE_BASE;
+        const COLORREF kColors[16] = {
+            RGB(255, 255, 255), RGB(200, 200, 200), RGB(128, 128, 128), RGB(0, 0, 0),
+            RGB(50, 205, 50),   RGB(30, 144, 255),  RGB(255, 140, 0),   RGB(186, 85, 211),
+            RGB(220, 20, 60),   RGB(255, 215, 0),   RGB(255, 99, 71),   RGB(0, 255, 255),
+            RGB(139, 69, 19),   RGB(255, 192, 203), RGB(75, 0, 130),   RGB(255, 255, 0)
+        };
+        CDC dc;
+        dc.Attach(lpDIS->hDC);
+        CRect rc = lpDIS->rcItem;
+        dc.FillSolidRect(&rc, kColors[idx]);
+        if (lpDIS->itemState & ODS_SELECTED) {
+            dc.Draw3dRect(&rc, RGB(255, 255, 255), RGB(255, 255, 255));
+            rc.DeflateRect(1, 1);
+            dc.Draw3dRect(&rc, RGB(0, 0, 0), RGB(0, 0, 0));
+        } else {
+            dc.Draw3dRect(&rc, Theme::kBorder, Theme::kBorder);
+        }
+        dc.Detach();
+        return;
+    }
+    CDialog::OnDrawItem(nIDCtl, lpDIS);
+}
+
+void CIconEditorDlg::OnOK() {
     CDialog::OnOK();
 }
 

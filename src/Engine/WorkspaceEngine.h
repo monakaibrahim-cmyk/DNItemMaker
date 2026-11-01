@@ -12,6 +12,8 @@
 
 #include "Data/CrashRecoveryDB.h"
 #include "Data/ItemManager.h"
+#include "Graphics/ActParser.h"
+#include "Graphics/AniParser.h"
 #include "Graphics/DDSParser.h"
 #include "Graphics/MeshParser.h"
 #include "Graphics/MeshRenderer.h"
@@ -35,6 +37,32 @@ namespace DNItemMaker::Engine {
 /**
  * @brief Consolidated 3D asset bundle required to render an item in the preview viewport.
  */
+enum class CharacterClassId : int32_t {
+    ItemOnly = 0,
+    Warrior = 1,
+    Archer = 2,
+    Sorceress = 3,
+    Cleric = 4,
+    Academic = 5,
+    Kali = 6,
+    Assassin = 7,
+    Lancea = 8,
+    Machina = 9,
+    Vandar = 10
+};
+
+struct CharacterClassBundle {
+    CharacterClassId classId = CharacterClassId::ItemOnly;
+    std::string className;
+    std::filesystem::path folderPath;
+    std::shared_ptr<const Graphics::ParsedMesh> mesh;
+    std::shared_ptr<const Graphics::ParsedSkin> skin;
+    std::vector<Graphics::SubmeshMaterial> materials;
+    std::shared_ptr<const Graphics::ParsedAnimationSet> animSet;
+    std::shared_ptr<const Graphics::ParsedActionFile> actions;
+    bool isLoaded = false;
+};
+
 struct ModelAssetBundle {
     bool hasModel = false;                          ///< True if both skin and mesh were located and loaded.
     std::filesystem::path skinPath;                 ///< Resolved `.skn` skin file path on disk.
@@ -325,6 +353,17 @@ public:
     bool GetItemIcon(int32_t iconIndex, Graphics::ImageBuffer& outTile);
 
     /**
+     * @brief Injects or overrides a 50x50 icon for an icon index in the cache and on disk.
+     * @param iconIndex 0-based icon index.
+     * @param tile 50x50 RGBA icon tile buffer.
+     * @return true on success.
+     */
+    bool SetCustomItemIcon(int32_t iconIndex, const Graphics::ImageBuffer& tile);
+
+    /** @brief Checks if a custom icon override exists for an icon index. */
+    bool HasCustomItemIcon(int32_t iconIndex) const;
+
+    /**
      * @brief Retrieves a full decoded DDS atlas page from the cache.
      * @param pageNumber 1-based page number (e.g. 1 for ItemIcon.dds, 2 for ItemIcon02.dds).
      * @return Shared pointer to const ImageBuffer, or nullptr.
@@ -345,6 +384,11 @@ public:
      * @return Populated ModelAssetBundle structure.
      */
     ModelAssetBundle LoadModelForItem(const Data::DNItem& item);
+
+    std::shared_ptr<CharacterClassBundle> GetCharacterClass(CharacterClassId id);
+    CharacterClassId InferClassForItem(const Data::DNItem& item) const;
+    std::shared_ptr<const Graphics::ParsedAnimationSet> LoadAniCached(const std::filesystem::path& aniPath);
+    std::shared_ptr<const Graphics::ParsedActionFile> LoadActCached(const std::filesystem::path& actPath);
 
 private:
     struct ItemUndoRecord {
@@ -372,7 +416,7 @@ private:
 
     std::deque<UndoEntry> m_undoStack;
 
-    std::mutex m_assetMutex;
+    mutable std::mutex m_assetMutex;
     std::unordered_map<int32_t, Graphics::ImageBuffer> m_iconTileCache;
     std::unordered_map<int, std::shared_ptr<const Graphics::ImageBuffer>> m_atlasCache;
     std::unordered_map<std::string, std::shared_ptr<const Graphics::ImageBuffer>> m_textureCache;
@@ -380,6 +424,9 @@ private:
     std::unordered_map<std::string, std::shared_ptr<const Graphics::ParsedMesh>> m_meshCache;
     std::string m_resourceCacheTag;
     int m_maxIconPage = 1;
+    std::unordered_map<int32_t, std::shared_ptr<CharacterClassBundle>> m_charClassCache;
+    std::unordered_map<std::string, std::shared_ptr<const Graphics::ParsedAnimationSet>> m_aniCache;
+    std::unordered_map<std::string, std::shared_ptr<const Graphics::ParsedActionFile>> m_actCache;
 
     std::jthread m_indexWorker;
 };

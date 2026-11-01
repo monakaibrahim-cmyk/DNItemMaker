@@ -1,3 +1,4 @@
+#include <cmath>
 #include "DDSParser.h"
 #include <Common/Logs/Logs.h>
 
@@ -418,4 +419,165 @@ bool DDSParser::CropIconTile(const ImageBuffer& atlas, int tileIndex, int tileWi
 
     return true;
 }
+
+bool DDSParser::EncodeRGBA32(const ImageBuffer& image, std::vector<uint8_t>& outDdsData)
+{
+    if (image.width == 0 || image.height == 0 || image.rgbaData.empty())
+    {
+        return false;
+    }
+    const size_t pixelCount = static_cast<size_t>(image.width) * image.height;
+    if (image.rgbaData.size() < pixelCount * 4)
+    {
+        return false;
+    }
+
+    const size_t totalFileSize = 4 + sizeof(DDS_HEADER) + pixelCount * 4;
+    outDdsData.resize(totalFileSize);
+
+    const uint32_t magic = 0x20534444u;
+    std::memcpy(outDdsData.data(), &magic, 4);
+
+    DDS_HEADER header{};
+    header.dwSize = 124;
+    header.dwFlags = 0x1 | 0x2 | 0x4 | 0x8 | 0x1000; // CAPS | HEIGHT | WIDTH | PITCH | PIXELFORMAT
+    header.dwHeight = image.height;
+    header.dwWidth = image.width;
+    header.dwPitchOrLinearSize = image.width * 4;
+    header.dwDepth = 0;
+    header.dwMipMapCount = 0;
+    header.ddspf.dwSize = 32;
+    header.ddspf.dwFlags = 0x40 | 0x1; // DDPF_RGB | DDPF_ALPHAPIXELS
+    header.ddspf.dwFourCC = 0;
+    header.ddspf.dwRGBBitCount = 32;
+    header.ddspf.dwRBitMask = 0x00FF0000;
+    header.ddspf.dwGBitMask = 0x0000FF00;
+    header.ddspf.dwBBitMask = 0x000000FF;
+    header.ddspf.dwABitMask = 0xFF000000;
+    header.dwCaps = 0x1000; // DDSCAPS_TEXTURE
+
+    std::memcpy(outDdsData.data() + 4, &header, sizeof(DDS_HEADER));
+
+    uint8_t* dst = outDdsData.data() + 128;
+    const uint8_t* src = image.rgbaData.data();
+    for (size_t i = 0; i < pixelCount; ++i)
+    {
+        dst[i * 4 + 0] = src[i * 4 + 2]; // B
+        dst[i * 4 + 1] = src[i * 4 + 1]; // G
+        dst[i * 4 + 2] = src[i * 4 + 0]; // R
+        dst[i * 4 + 3] = src[i * 4 + 3]; // A
+    }
+
+    return true;
+}
+
+bool DDSParser::SaveFileRGBA32(const std::filesystem::path& filePath, const ImageBuffer& image)
+{
+    std::vector<uint8_t> ddsBytes;
+    if (!EncodeRGBA32(image, ddsBytes)) return false;
+
+    std::ofstream out(filePath, std::ios::binary | std::ios::trunc);
+    if (!out.is_open()) return false;
+    out.write(reinterpret_cast<const char*>(ddsBytes.data()), static_cast<std::streamsize>(ddsBytes.size()));
+    return out.good();
+}
+
+bool DDSParser::ScaleImageBilinear(const ImageBuffer& src, uint32_t dstWidth, uint32_t dstHeight, ImageBuffer& outScaled)
+{
+    if (src.width == 0 || src.height == 0 || dstWidth == 0 || dstHeight == 0 || src.rgbaData.empty())
+    {
+        return false;
+    }
+    outScaled.width = dstWidth;
+    outScaled.height = dstHeight;
+    outScaled.rgbaData.resize(static_cast<size_t>(dstWidth) * dstHeight * 4);
+
+    const float xRatio = static_cast<float>(src.width) / dstWidth;
+    const float yRatio = static_cast<float>(src.height) / dstHeight;
+
+    for (uint32_t dy = 0; dy < dstHeight; ++dy)
+    {
+        const float sy = (dy + 0.5f) * yRatio - 0.5f;
+        const int y0 = std::clamp(static_cast<int>(std::floor(sy)), 0, static_cast<int>(src.height - 1));
+        const int y1 = std::clamp(y0 + 1, 0, static_cast<int>(src.height - 1));
+        const float yFrac = std::clamp(sy - y0, 0.0f, 1.0f);
+
+        for (uint32_t dx = 0; dx < dstWidth; ++dx)
+        {
+            const float sx = (dx + 0.5f) * xRatio - 0.5f;
+            const int x0 = std::clamp(static_cast<int>(std::floor(sx)), 0, static_cast<int>(src.width - 1));
+            const int x1 = std::clamp(x0 + 1, 0, static_cast<int>(src.width - 1));
+            const float xFrac = std::clamp(sx - x0, 0.0f, 1.0f);
+
+            const auto getPixel = [&](int px, int py) -> const uint8_t* {
+                return &src.rgbaData[(static_cast<size_t>(py) * src.width + px) * 4];
+            };
+
+            const uint8_t* c00 = getPixel(x0, y0);
+            const uint8_t* c10 = getPixel(x1, y0);
+            const uint8_t* c01 = getPixel(x0, y1);
+            const uint8_t* c11 = getPixel(x1, y1);
+
+            uint8_t* dstPix = &outScaled.rgbaData[(static_cast<size_t>(dy) * dstWidth + dx) * 4];
+            for (int ch = 0; ch < 4; ++ch)
+            {
+                const float top = c00[ch] * (1.0f - xFrac) + c10[ch] * xFrac;
+                const float btm = c01[ch] * (1.0f - xFrac) + c11[ch] * xFrac;
+                dstPix[ch] = static_cast<uint8_t>(std::clamp(std::round(top * (1.0f - yFrac) + btm * yFrac), 0.0f, 255.0f));
+            }
+        }
+    }
+    return true;
+}
+
+void DDSParser::ApplyRankBorder(ImageBuffer& icon, int rank)
+{
+    if (icon.width != 50 || icon.height != 50 || icon.rgbaData.size() < 50 * 50 * 4)
+    {
+        return;
+    }
+    if (rank <= 0) return;
+
+    uint8_t br = 255, bg = 255, bb = 255, ba = 255;
+    uint8_t hr = 255, hg = 255, hb = 255;
+    switch (rank)
+    {
+        case 1: br = 50;  bg = 205; bb = 50;  hr = 144; hg = 238; hb = 144; break;
+        case 2: br = 30;  bg = 144; bb = 255; hr = 135; hg = 206; hb = 250; break;
+        case 3: br = 255; bg = 140; bb = 0;   hr = 255; hg = 215; hb = 0;   break;
+        case 4: br = 186; bg = 85;  bb = 211; hr = 221; hg = 160; hb = 221; break;
+        case 5: br = 220; bg = 20;  bb = 60;  hr = 255; hg = 99;  hb = 71;  break;
+        case 6: br = 255; bg = 215; bb = 0;   hr = 255; hg = 250; hb = 205; break;
+        default: br = 255; bg = 165; bb = 0;  hr = 255; hg = 220; hb = 100; break;
+    }
+
+    auto setPixel = [&](int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+        if (x < 0 || x >= 50 || y < 0 || y >= 50) return;
+        uint8_t* p = &icon.rgbaData[(static_cast<size_t>(y) * 50 + x) * 4];
+        p[0] = r; p[1] = g; p[2] = b; p[3] = a;
+    };
+
+    for (int x = 0; x < 50; ++x)
+    {
+        setPixel(x, 0, br, bg, bb, ba);
+        setPixel(x, 49, br, bg, bb, ba);
+    }
+    for (int y = 0; y < 50; ++y)
+    {
+        setPixel(0, y, br, bg, bb, ba);
+        setPixel(49, y, br, bg, bb, ba);
+    }
+    for (int c = 1; c <= 3; ++c)
+    {
+        setPixel(c, 1, hr, hg, hb, ba);
+        setPixel(1, c, hr, hg, hb, ba);
+        setPixel(49 - c, 1, hr, hg, hb, ba);
+        setPixel(48, c, hr, hg, hb, ba);
+        setPixel(c, 48, hr, hg, hb, ba);
+        setPixel(1, 49 - c, hr, hg, hb, ba);
+        setPixel(49 - c, 48, hr, hg, hb, ba);
+        setPixel(48, 49 - c, hr, hg, hb, ba);
+    }
+}
+
 } // namespace DNItemMaker::Graphics

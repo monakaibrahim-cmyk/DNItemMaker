@@ -6,7 +6,7 @@
  *
  * Implements binary parsing for Dragon Nest proprietary version 13 mesh files,
  * extracting submesh geometry, vertex coordinates, normal vectors, UV mapping coordinates,
- * triangle indices, bounding boxes, and skeletal bone hierarchy.
+ * triangle indices, bounding boxes, skeletal bone hierarchy, and attachment dummies.
  */
 
 #include <cstdint>
@@ -48,6 +48,14 @@ struct BoundingBox {
 };
 
 /**
+ * @brief Skeletal vertex skinning influence (4 bone indices and weights per vertex).
+ */
+struct VertexWeight {
+    uint16_t boneIndices[4] = { 0, 0, 0, 0 };
+    float weights[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
+};
+
+/**
  * @brief Discrete drawable part of a 3D mesh (corresponding to CEtSubMesh in the engine).
  */
 struct Submesh {
@@ -65,6 +73,7 @@ struct Submesh {
     std::vector<Vector2> uvs;            ///< Primary UV texture mapping coordinates.
     std::vector<uint32_t> triangles;     ///< De-indexed triangle list (3 vertex indices per triangle).
     std::vector<std::string> linkedBones;///< Names of skeletal bones influencing this submesh.
+    std::vector<VertexWeight> skinWeights;///< Per-vertex skeletal bone weights and indices.
 
     /** @brief Returns the total number of triangles in this submesh. */
     int32_t GetTriangleCount() const { return static_cast<int32_t>(triangles.size() / 3); }
@@ -75,6 +84,26 @@ struct Submesh {
  */
 struct BoneNode {
     std::string name;                   ///< Bone identifier name (e.g. "Bone01", "ValveBiped").
+    float invWorldMatrix[16] = {        ///< Inverse bind-pose world transformation matrix.
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+};
+
+/**
+ * @brief Attachment dummy node (e.g. weapon mount, particle emitter mount).
+ */
+struct DummyNode {
+    std::string name;                   ///< Dummy identifier (e.g. "#FX_12", "~BoxBone01").
+    std::string parentName;             ///< Parent skeletal bone or transform node.
+    float matrix[16] = {                ///< Local transformation matrix relative to parent bone.
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
 };
 
 /**
@@ -92,6 +121,7 @@ struct ParsedMesh {
     BoundingBox bbox;                   ///< Overall model axis-aligned bounding box.
     std::vector<BoneNode> bones;        ///< Skeletal bone nodes.
     std::vector<Submesh> submeshes;     ///< List of drawable submesh parts.
+    std::vector<DummyNode> dummies;     ///< Attachment dummy nodes.
 
     /** @brief Computes aggregate vertex count across all submeshes. */
     int32_t GetTotalVertices() const {

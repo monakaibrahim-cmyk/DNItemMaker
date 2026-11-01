@@ -318,7 +318,7 @@ END_MESSAGE_MAP()
 
 BOOL CFlatGroupBox::Create(LPCTSTR lpszCaption, DWORD dwStyle, const RECT& rect, CWnd* pParentWnd, UINT nID) {
 
-    return CButton::Create(lpszCaption, (dwStyle | WS_CHILD) & ~WS_CLIPSIBLINGS, rect, pParentWnd, nID);
+    return CButton::Create(lpszCaption, (dwStyle | WS_CHILD) | WS_CLIPSIBLINGS, rect, pParentWnd, nID);
 
 }
 
@@ -328,7 +328,7 @@ void CFlatGroupBox::PreSubclassWindow() {
 
     CButton::PreSubclassWindow();
 
-    ModifyStyle(WS_CLIPSIBLINGS, 0);
+    ModifyStyle(0, WS_CLIPSIBLINGS);
 
     ::SetWindowTheme(GetSafeHwnd(), L"", L"");
 
@@ -336,7 +336,45 @@ void CFlatGroupBox::PreSubclassWindow() {
 
 
 
-BOOL CFlatGroupBox::OnEraseBkgnd(CDC* /*pDC*/) {
+BOOL CFlatGroupBox::OnEraseBkgnd(CDC* pDC) {
+    if (!pDC) return TRUE;
+    CRect rc;
+    GetClientRect(&rc);
+    if (rc.IsRectEmpty()) return TRUE;
+
+    // Exclude all visible sibling controls within this group box
+    // so background filling never paints over any sibling buttons, labels, edits, etc.
+    CWnd* pParent = GetParent();
+    if (pParent && pParent->GetSafeHwnd()) {
+        CRect rcScreen = rc;
+        ClientToScreen(&rcScreen);
+
+        wchar_t className[64];
+        for (CWnd* pSibling = pParent->GetWindow(GW_CHILD); pSibling != nullptr; pSibling = pSibling->GetWindow(GW_HWNDNEXT)) {
+            if (pSibling == this || !pSibling->GetSafeHwnd() || !pSibling->IsWindowVisible()) {
+                continue;
+            }
+            // Skip other group boxes so they can handle their own backgrounds
+            className[0] = 0;
+            ::GetClassNameW(pSibling->GetSafeHwnd(), className, 64);
+            if (_wcsicmp(className, L"Button") == 0) {
+                const LONG style = ::GetWindowLongW(pSibling->GetSafeHwnd(), GWL_STYLE);
+                if ((style & BS_TYPEMASK) == BS_GROUPBOX) {
+                    continue;
+                }
+            }
+
+            CRect rcSib;
+            pSibling->GetWindowRect(&rcSib);
+            CRect rcIntersect;
+            if (rcIntersect.IntersectRect(&rcScreen, &rcSib)) {
+                ScreenToClient(&rcIntersect);
+                pDC->ExcludeClipRect(&rcIntersect);
+            }
+        }
+    }
+
+    pDC->FillSolidRect(&rc, Theme::kChrome);
     return TRUE;
 }
 

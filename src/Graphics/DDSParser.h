@@ -62,6 +62,39 @@ public:
      */
     static bool CropIconTile(const ImageBuffer& atlas, int tileIndex, int tileWidth, int tileHeight, ImageBuffer& outTile);
 
+    /**
+     * @brief Encodes a 32-bit RGBA image into an uncompressed 32-bit DDS file in memory.
+     * @param image Source ImageBuffer.
+     * @param outDdsData Output buffer receiving raw DDS file bytes.
+     * @return true on success.
+     */
+    static bool EncodeRGBA32(const ImageBuffer& image, std::vector<uint8_t>& outDdsData);
+
+    /**
+     * @brief Saves a 32-bit RGBA image to a .dds file on disk.
+     * @param filePath Filesystem path for destination .dds.
+     * @param image Source ImageBuffer.
+     * @return true on success.
+     */
+    static bool SaveFileRGBA32(const std::filesystem::path& filePath, const ImageBuffer& image);
+
+    /**
+     * @brief Scales an image buffer to destination dimensions using bilinear interpolation.
+     * @param src Source ImageBuffer.
+     * @param dstWidth Target width in pixels.
+     * @param dstHeight Target height in pixels.
+     * @param outScaled Destination ImageBuffer.
+     * @return true on success.
+     */
+    static bool ScaleImageBilinear(const ImageBuffer& src, uint32_t dstWidth, uint32_t dstHeight, ImageBuffer& outScaled);
+
+    /**
+     * @brief Overlays a glowing Dragon Nest rank border onto an icon (50x50 pixels).
+     * @param icon Icon buffer to modify in-place.
+     * @param rank Item rank (0=Normal, 1=Magic, 2=Rare, 3=Epic, 4=Unique, 5=Legend, 6=Divine).
+     */
+    static void ApplyRankBorder(ImageBuffer& icon, int rank);
+
 private:
     static void DecompressDXT1Block(const uint8_t* block, uint32_t* dest, uint32_t stride);
     static void DecompressDXT5Block(const uint8_t* block, uint32_t* dest, uint32_t stride);

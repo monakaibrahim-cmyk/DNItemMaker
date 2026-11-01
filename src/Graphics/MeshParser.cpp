@@ -1,5 +1,6 @@
-#include "MeshParser.h"
-#include "Common/Logs/Logs.h"
+#include "Graphics/MeshParser.h"
+#include "Engine/WorkspaceEngine.h"
+#include <Common/Logs/Logs.h>
 
 #include <algorithm>
 #include <cstring>
@@ -11,101 +12,108 @@ namespace DNItemMaker::Graphics {
 namespace {
 
 constexpr const char* kMeshMagic = "Eternity Engine Mesh File";
-constexpr size_t kHeaderSize = 1024;     // MESH_HEADER_RESERVED pads SMeshFileHeader to 1024 bytes
-constexpr size_t kSubMeshHeaderSize = 1024; // SUBMESH_HEADER_RESERVED pads SSubMeshHeader to 1024 bytes
+constexpr size_t kHeaderSize = 1024;
+constexpr size_t kSubMeshHeaderSize = 1024;
 constexpr size_t kNameSize = 256;
-constexpr size_t kMatrixSize = 64;       // EtMatrix (4x4 float)
+constexpr size_t kMatrixSize = 64; // 4x4 float
 
-/// Bounds-checked little-endian cursor over the file buffer.
 class Cursor {
 public:
     Cursor(const uint8_t* data, size_t size) : m_data(data), m_size(size) {}
 
-    size_t Position() const { return m_pos; }
-    bool Ok() const { return !m_failed; }
+    bool Ok() const noexcept { return m_offset <= m_size && !m_failed; }
+    size_t Position() const noexcept { return m_offset; }
+    size_t Remaining() const noexcept { return m_offset <= m_size ? m_size - m_offset : 0; }
 
-    bool Skip(size_t n) {
-        if (n > m_size - m_pos) { m_failed = true; return false; }
-        m_pos += n;
-        return true;
+    void Skip(size_t bytes) noexcept {
+        if (m_offset + bytes > m_size) {
+            m_failed = true;
+            m_offset = m_size;
+            return;
+        }
+        m_offset += bytes;
     }
 
     template <typename T>
-    T Read() {
-        T v{};
-        if (sizeof(T) > m_size - m_pos) { m_failed = true; return v; }
-        std::memcpy(&v, m_data + m_pos, sizeof(T));
-        m_pos += sizeof(T);
-        return v;
+    T Read() noexcept {
+        T value{};
+        if (m_offset + sizeof(T) > m_size) {
+            m_failed = true;
+            return value;
+        }
+        std::memcpy(&value, m_data + m_offset, sizeof(T));
+        m_offset += sizeof(T);
+        return value;
     }
 
     template <typename T>
-    bool ReadArray(std::vector<T>& out, size_t count) {
-        if (count > (m_size - m_pos) / sizeof(T)) { m_failed = true; return false; }
+    void ReadArray(std::vector<T>& out, size_t count) {
         out.resize(count);
-        if (count) std::memcpy(out.data(), m_data + m_pos, count * sizeof(T));
-        m_pos += count * sizeof(T);
-        return true;
+        const size_t byteCount = count * sizeof(T);
+        if (m_offset + byteCount > m_size) {
+            m_failed = true;
+            out.clear();
+            return;
+        }
+        std::memcpy(out.data(), m_data + m_offset, byteCount);
+        m_offset += byteCount;
     }
 
-    std::string ReadFixedString(size_t len) {
-        if (len > m_size - m_pos) { m_failed = true; return {}; }
-        const char* p = reinterpret_cast<const char*>(m_data + m_pos);
-        m_pos += len;
-        return std::string(p, strnlen(p, len));
+    std::string ReadFixedString(size_t maxLen) {
+        if (m_offset + maxLen > m_size) {
+            m_failed = true;
+            return {};
+        }
+        const char* p = reinterpret_cast<const char*>(m_data + m_offset);
+        size_t len = 0;
+        while (len < maxLen && p[len] != '\0') ++len;
+        m_offset += maxLen;
+        return std::string(p, len);
     }
 
 private:
-    const uint8_t* m_data;
-    size_t m_size;
-    size_t m_pos = 0;
+    const uint8_t* m_data = nullptr;
+    size_t m_size = 0;
+    size_t m_offset = 0;
     bool m_failed = false;
 };
 
-/// Convert the engine's index buffer into a plain triangle list.
-/// Strips use 0xFFFF as restart marker and alternate winding; degenerate faces are dropped.
-void BuildTriangles(const std::vector<uint16_t>& idx, bool strip, std::vector<uint32_t>& out) {
+void BuildTriangles(const std::vector<uint16_t>& indices, bool isStrip, std::vector<uint32_t>& out) {
     out.clear();
-    if (!strip) {
-        const size_t n = idx.size() / 3 * 3;
-        out.assign(idx.begin(), idx.begin() + n);
+    if (indices.size() < 3) return;
+
+    if (!isStrip) {
+        out.reserve(indices.size());
+        for (uint16_t idx : indices) out.push_back(idx);
         return;
     }
 
-    if (idx.size() >= 3) {
-        out.reserve((idx.size() - 2) * 3);
-    }
-    int run = 0;
-    for (size_t i = 0; i + 2 < idx.size(); ++i) {
-        if (idx[i] == 0xFFFF || idx[i + 1] == 0xFFFF || idx[i + 2] == 0xFFFF) {
-            run = 0;
-            continue;
+    out.reserve((indices.size() - 2) * 3);
+    for (size_t i = 0; i + 2 < indices.size(); ++i) {
+        const uint16_t a = indices[i];
+        const uint16_t b = indices[i + 1];
+        const uint16_t c = indices[i + 2];
+        if (a == b || b == c || a == c) continue; // degenerate
+        if ((i & 1) == 0) {
+            out.push_back(a); out.push_back(b); out.push_back(c);
+        } else {
+            out.push_back(b); out.push_back(a); out.push_back(c);
         }
-        uint32_t a = idx[i], b = idx[i + 1], c = idx[i + 2];
-        if ((run & 1) != 0) std::swap(b, c);
-        ++run;
-        if (a == b || b == c || a == c) continue;
-        out.push_back(a);
-        out.push_back(b);
-        out.push_back(c);
     }
 }
 
 } // namespace
 
 std::string ParsedMesh::GetSummary() const {
-    if (!valid) return std::format("Invalid mesh: {}", errorMessage);
-
+    if (!valid) return "Invalid mesh: " + errorMessage;
     const auto ext = bbox.GetExtents();
-    return std::format("Mesh: {} | Ver: {} | Submeshes: {} | Vertices: {} | Faces: {} | Bones: {} | BBox: [{:.1f} x {:.1f} x {:.1f}]",
-                       filePath.filename().string(), version, submeshes.size(), GetTotalVertices(),
-                       GetTotalTriangles(), bones.size(), ext.x, ext.y, ext.z);
+    return std::format("v{} (LODs: {}) - {} submeshes, {} vertices, {} triangles, {} bones, {} dummies - Box: [{:.2f}, {:.2f}, {:.2f}]",
+                       version, lodCount, submeshes.size(), GetTotalVertices(), GetTotalTriangles(), bones.size(), dummies.size(),
+                       ext.x, ext.y, ext.z);
 }
 
 ParsedMesh MeshParser::LoadFromFile(const std::filesystem::path& path) {
     ParsedMesh mesh;
-    mesh.filePath = path;
-
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         mesh.errorMessage = "Failed to open mesh file";
@@ -170,7 +178,9 @@ ParsedMesh MeshParser::LoadFromMemory(const uint8_t* data, size_t size, const st
     for (int32_t i = 0; i < boneCount; ++i) {
         BoneNode bone;
         bone.name = cur.ReadFixedString(kNameSize);
-        cur.Skip(kMatrixSize);
+        for (int k = 0; k < 16; ++k) {
+            bone.invWorldMatrix[k] = cur.Read<float>();
+        }
         mesh.bones.push_back(std::move(bone));
     }
 
@@ -215,8 +225,20 @@ ParsedMesh MeshParser::LoadFromMemory(const uint8_t* data, size_t size, const st
         }
         if (sm.usesVertexColor) cur.Skip(vc * sizeof(uint32_t));
         if (sm.usesPhysique) {
-            cur.Skip(vc * sizeof(int16_t) * 4); // bone indices
-            cur.Skip(vc * sizeof(float) * 4);   // bone weights
+            sm.skinWeights.resize(vc);
+            for (size_t i = 0; i < vc; ++i) {
+                sm.skinWeights[i].boneIndices[0] = static_cast<uint16_t>(cur.Read<int16_t>());
+                sm.skinWeights[i].boneIndices[1] = static_cast<uint16_t>(cur.Read<int16_t>());
+                sm.skinWeights[i].boneIndices[2] = static_cast<uint16_t>(cur.Read<int16_t>());
+                sm.skinWeights[i].boneIndices[3] = static_cast<uint16_t>(cur.Read<int16_t>());
+            }
+            for (size_t i = 0; i < vc; ++i) {
+                sm.skinWeights[i].weights[0] = cur.Read<float>();
+                sm.skinWeights[i].weights[1] = cur.Read<float>();
+                sm.skinWeights[i].weights[2] = cur.Read<float>();
+                sm.skinWeights[i].weights[3] = cur.Read<float>();
+            }
+
             const int32_t linked = cur.Read<int32_t>();
             if (linked < 0 || linked > 4096) {
                 mesh.errorMessage = std::format("Corrupt bone link count in submesh {}", s);
@@ -242,11 +264,61 @@ ParsedMesh MeshParser::LoadFromMemory(const uint8_t* data, size_t size, const st
         mesh.submeshes.push_back(std::move(sm));
     }
 
+    // Skip collision primitives if present
+    for (int32_t i = 0; i < mesh.collisionPrimitiveCount; ++i) {
+        const int32_t ctype = cur.Read<int32_t>();
+        if (mesh.version > 10) {
+            const int32_t strLen = cur.Read<int32_t>();
+            if (strLen > 0) cur.Skip(static_cast<size_t>(strLen));
+        }
+        if (ctype == 0) {
+            cur.Skip(12 + 36); // Box: origin + 3 axes
+        } else if (ctype == 1) {
+            cur.Skip(12 + 4);  // Sphere: origin + radius
+        } else if (ctype == 2) {
+            cur.Skip(12 + 12 + 4); // Capsule: origin + dir + radius
+        } else if (ctype == 3 || ctype == 4) {
+            const int32_t triCount = cur.Read<int32_t>();
+            if (triCount > 0) cur.Skip(static_cast<size_t>(triCount) * 36);
+        }
+    }
+
+    // Read attachment dummy nodes
+    if (mesh.dummyCount > 0 && mesh.dummyCount < 4096) {
+        mesh.dummies.reserve(static_cast<size_t>(mesh.dummyCount));
+        if (mesh.version >= 13) {
+            for (int32_t i = 0; i < mesh.dummyCount; ++i) {
+                DummyNode d;
+                d.name = cur.ReadFixedString(kNameSize);
+                d.parentName = cur.ReadFixedString(kNameSize);
+                for (int k = 0; k < 16; ++k) d.matrix[k] = cur.Read<float>();
+                mesh.dummies.push_back(std::move(d));
+            }
+        } else {
+            for (int32_t i = 0; i < mesh.dummyCount; ++i) {
+                DummyNode d;
+                std::string rawName = cur.ReadFixedString(kNameSize);
+                if (!rawName.empty() && rawName[0] == 'L') {
+                    d.name = rawName.substr(1);
+                    d.matrix[12] = cur.Read<float>();
+                    d.matrix[13] = cur.Read<float>();
+                    d.matrix[14] = cur.Read<float>();
+                    d.parentName = cur.ReadFixedString(kNameSize);
+                } else {
+                    d.name = rawName;
+                    d.parentName = cur.ReadFixedString(kNameSize);
+                    for (int k = 0; k < 16; ++k) d.matrix[k] = cur.Read<float>();
+                }
+                mesh.dummies.push_back(std::move(d));
+            }
+        }
+    }
+
     mesh.valid = true;
     LOG_DEBUG(Channels::graphics,
-              "Parsed mesh {} (v{}, {} submeshes, {} verts, {} tris, {} bones)",
+              "Parsed mesh {} (v{}, {} submeshes, {} verts, {} tris, {} bones, {} dummies)",
               debugPath.empty() ? "<memory>" : debugPath, mesh.version, mesh.submeshes.size(),
-              mesh.GetTotalVertices(), mesh.GetTotalTriangles(), mesh.bones.size());
+              mesh.GetTotalVertices(), mesh.GetTotalTriangles(), mesh.bones.size(), mesh.dummies.size());
     return mesh;
 }
 

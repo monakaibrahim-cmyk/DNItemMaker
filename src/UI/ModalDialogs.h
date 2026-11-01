@@ -18,6 +18,7 @@
 #include "UI/Theme.h"
 #include "Engine/WorkspaceEngine.h"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -450,6 +451,188 @@ private:
     CComboBox m_cmbTrials;
     CFlatButton m_btnRunSim;
     CFlatEdit m_edtTelemetry;
+
+    CFlatButton m_btnClose;
+};
+
+
+/**
+ * @class CActConverterDlg
+ * @brief Modal dialog for converting Dragon Nest ACT files from version 6 to version 5.
+ */
+class CActConverterDlg : public CThemedDialog {
+public:
+    CActConverterDlg(Engine::WorkspaceEngine& engine, CWnd* parent = nullptr);
+
+protected:
+    BOOL OnInitDialog() override;
+    void OnOK() override;
+
+    afx_msg void OnBrowseInput();
+    afx_msg void OnConvertSingle();
+    afx_msg void OnBrowseBatchDir();
+    afx_msg void OnConvertBatch();
+
+    DECLARE_MESSAGE_MAP()
+
+private:
+    void AppendLog(const std::wstring& line);
+
+    Engine::WorkspaceEngine& m_engine;
+    EmptyDialogTemplate m_tmpl;
+
+    CStatic m_lblHeader;
+
+    // Single File Card
+    CFlatGroupBox m_grpSingle;
+    CStatic m_lblInputFile;
+    CFlatEdit m_edtInputFile;
+    CFlatButton m_btnBrowseInput;
+    CStatic m_lblFileInfo;
+    CFlatButton m_btnConvertSingle;
+
+    // Batch Directory Card
+    CFlatGroupBox m_grpBatch;
+    CStatic m_lblBatchDir;
+    CFlatEdit m_edtBatchDir;
+    CFlatButton m_btnBrowseBatch;
+    CButton m_chkBackup;
+    CFlatButton m_btnConvertBatch;
+
+    // Log / Results
+    CFlatGroupBox m_grpResults;
+    CFlatEdit m_edtLog;
+
+    CFlatButton m_btnClose;
+};
+
+/**
+ * @class CIconCanvasWnd
+ * @brief Interactive 50x50 pixel editing canvas with 8x zoom and transparency grid.
+ */
+class CIconCanvasWnd : public CWnd {
+public:
+    CIconCanvasWnd() = default;
+
+    void SetIconBuffer(const Graphics::ImageBuffer& img);
+    const Graphics::ImageBuffer& GetIconBuffer() const noexcept { return m_icon; }
+    Graphics::ImageBuffer& GetIconBuffer() noexcept { return m_icon; }
+
+    void SetCurrentColor(COLORREF color, uint8_t alpha = 255) noexcept;
+    COLORREF GetCurrentColor() const noexcept { return m_color; }
+
+    enum class Tool { Pencil, Eraser, Fill, Eyedropper };
+    void SetCurrentTool(Tool tool) noexcept { m_tool = tool; }
+    Tool GetCurrentTool() const noexcept { return m_tool; }
+
+    void SetShowGrid(bool show) { m_showGrid = show; Invalidate(FALSE); }
+    bool GetShowGrid() const noexcept { return m_showGrid; }
+
+    void SetOnChangeCallback(std::function<void()> cb) { m_onChange = std::move(cb); }
+
+protected:
+    afx_msg void OnPaint();
+    afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+    afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+    afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
+
+    DECLARE_MESSAGE_MAP()
+
+private:
+    void ApplyToolAt(CPoint pt, bool isRightClick = false);
+    void FloodFill(int startX, int startY, uint32_t targetColor, uint32_t fillColor);
+
+    Graphics::ImageBuffer m_icon;
+    COLORREF m_color = RGB(255, 255, 255);
+    uint8_t m_alpha = 255;
+    Tool m_tool = Tool::Pencil;
+    bool m_showGrid = true;
+    bool m_drawing = false;
+    std::function<void()> m_onChange;
+};
+
+/**
+ * @class CIconEditorDlg
+ * @brief Modal studio for creating, importing, drawing, and exporting custom 50x50 item icons.
+ */
+class CIconEditorDlg : public CThemedDialog {
+public:
+    CIconEditorDlg(Engine::WorkspaceEngine& engine, int32_t targetItemId, int32_t initialIconIndex, CWnd* parent = nullptr);
+
+    int32_t ResultIconIndex() const noexcept { return m_iconIndex; }
+
+protected:
+    BOOL OnInitDialog() override;
+    void OnOK() override;
+
+    afx_msg void OnToolPencil();
+    afx_msg void OnToolEraser();
+    afx_msg void OnToolFill();
+    afx_msg void OnToolEyedropper();
+    afx_msg void OnToolClear();
+    afx_msg void OnToggleGrid();
+
+    afx_msg void OnColorPaletteBtn(UINT nID);
+    afx_msg void OnRankBorderChanged();
+
+    afx_msg void OnImportImage();
+    afx_msg void OnPasteClipboard();
+    afx_msg void OnExportPng();
+    afx_msg void OnExportDds();
+    afx_msg void OnAssignToItem();
+
+    afx_msg void OnPaint();
+    afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
+
+    DECLARE_MESSAGE_MAP()
+
+private:
+    void UpdatePreviews();
+    void SetActiveColorUI(COLORREF col);
+
+    Engine::WorkspaceEngine& m_engine;
+    int32_t m_targetItemId = 0;
+    int32_t m_iconIndex = 0;
+    int32_t m_itemRank = 0;
+    EmptyDialogTemplate m_tmpl;
+
+    CStatic m_lblHeader;
+
+    // Left: Drawing Canvas
+    CFlatGroupBox m_grpCanvas;
+    CIconCanvasWnd m_canvas;
+    CButton m_chkGrid;
+
+    // Middle: Tools & Palettes
+    CFlatGroupBox m_grpTools;
+    CFlatButton m_btnToolPencil;
+    CFlatButton m_btnToolEraser;
+    CFlatButton m_btnToolFill;
+    CFlatButton m_btnToolEyedropper;
+    CFlatButton m_btnToolClear;
+
+    CFlatGroupBox m_grpColors;
+    std::array<CButton, 16> m_paletteButtons;
+    CStatic m_lblCurColor;
+
+    CFlatGroupBox m_grpRankBorder;
+    CStatic m_lblRankBorder;
+    CComboBox m_cmbRankBorder;
+    CFlatButton m_btnApplyBorder;
+
+    // Right: Actions & Previews
+    CFlatGroupBox m_grpPreviews;
+    CStatic m_lblPreview1x;
+    CStatic m_lblPreview2x;
+
+    CFlatGroupBox m_grpActions;
+    CFlatButton m_btnImport;
+    CFlatButton m_btnPaste;
+    CFlatButton m_btnExportPng;
+    CFlatButton m_btnExportDds;
+    CFlatButton m_btnAssign;
 
     CFlatButton m_btnClose;
 };

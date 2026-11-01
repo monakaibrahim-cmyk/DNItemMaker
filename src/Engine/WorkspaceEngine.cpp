@@ -721,6 +721,20 @@ bool WorkspaceEngine::GetItemIcon(int32_t iconIndex, Graphics::ImageBuffer& outT
         }
     }
 
+    if (!m_items.GetResourcePath().empty()) {
+        const auto customPath = m_items.GetResourcePath() / "ui" / "mainbar" / "custom" / std::format("icon_{:05d}.dds", iconIndex);
+        std::error_code ec;
+        if (std::filesystem::exists(customPath, ec)) {
+            Graphics::ImageBuffer customImg;
+            if (Graphics::DDSParser::DecodeFile(customPath, customImg)) {
+                std::scoped_lock lock(m_assetMutex);
+                m_iconTileCache[iconIndex] = customImg;
+                outTile = customImg;
+                return true;
+            }
+        }
+    }
+
     const int page = iconIndex / kIconsPerPage + 1;
     const int tile = iconIndex % kIconsPerPage;
     const auto atlas = GetIconAtlasPage(page);
@@ -884,6 +898,218 @@ ModelAssetBundle WorkspaceEngine::LoadModelForItem(const Data::DNItem& item) {
                                        bundle.mesh->GetTotalTriangles(),
                                        bundle.mesh->GetTotalVertices());
     return bundle;
+}
+
+
+std::shared_ptr<const Graphics::ParsedAnimationSet> WorkspaceEngine::LoadAniCached(const std::filesystem::path& aniPath) {
+    if (aniPath.empty()) return nullptr;
+    const std::string key = NormalizePathKey(aniPath);
+
+    {
+        std::scoped_lock lock(m_assetMutex);
+        const auto it = m_aniCache.find(key);
+        if (it != m_aniCache.end()) return it->second;
+    }
+
+    auto parsed = std::make_shared<Graphics::ParsedAnimationSet>(Graphics::AniParser::LoadFromFile(aniPath));
+    if (parsed->valid) {
+        std::scoped_lock lock(m_assetMutex);
+        if (m_aniCache.size() >= 128) {
+            auto it = m_aniCache.begin();
+            std::advance(it, m_aniCache.size() / 2);
+            m_aniCache.erase(m_aniCache.begin(), it);
+        }
+        m_aniCache[key] = parsed;
+    }
+    return parsed;
+}
+
+std::shared_ptr<const Graphics::ParsedActionFile> WorkspaceEngine::LoadActCached(const std::filesystem::path& actPath) {
+    if (actPath.empty()) return nullptr;
+    const std::string key = NormalizePathKey(actPath);
+
+    {
+        std::scoped_lock lock(m_assetMutex);
+        const auto it = m_actCache.find(key);
+        if (it != m_actCache.end()) return it->second;
+    }
+
+    auto parsed = std::make_shared<Graphics::ParsedActionFile>(Graphics::ActParser::LoadFromFile(actPath));
+    if (parsed->valid) {
+        std::scoped_lock lock(m_assetMutex);
+        if (m_actCache.size() >= 128) {
+            auto it = m_actCache.begin();
+            std::advance(it, m_actCache.size() / 2);
+            m_actCache.erase(m_actCache.begin(), it);
+        }
+        m_actCache[key] = parsed;
+    }
+    return parsed;
+}
+
+std::shared_ptr<CharacterClassBundle> WorkspaceEngine::GetCharacterClass(CharacterClassId id) {
+    if (id == CharacterClassId::ItemOnly) return nullptr;
+
+    const int32_t key = static_cast<int32_t>(id);
+    {
+        std::scoped_lock lock(m_assetMutex);
+        const auto it = m_charClassCache.find(key);
+        if (it != m_charClassCache.end()) return it->second;
+    }
+
+    struct ClassDef {
+        const char* name;
+        const char* folder;
+        const char* mesh;
+        const char* skin;
+        const char* ani;
+        const char* act;
+    };
+
+    static const std::unordered_map<CharacterClassId, ClassDef> kDefs = {
+        { CharacterClassId::Warrior,   { "Warrior",   "char/player/warrior",   "warrior.msh",   "warrior.skn",   "wa_normal.ani",     "warrior_basic.act" } },
+        { CharacterClassId::Archer,    { "Archer",    "char/player/archer",    "archer.msh",    "archer.skn",    "archer_normal.ani", "archer_basic.act" } },
+        { CharacterClassId::Sorceress, { "Sorceress", "char/player/soceress",  "soceress.msh",  "soceress.skn",  "so_normal.ani",     "soceress_basic.act" } },
+        { CharacterClassId::Cleric,    { "Cleric",    "char/player/cleric",    "cleric.msh",    "cleric.skn",    "cl_normal.ani",     "cleric_basic.act" } },
+        { CharacterClassId::Academic,  { "Academic",  "char/player/academic",  "academic.msh",  "academic.skn",  "ac_normal1.ani",    "academic_basic.act" } },
+        { CharacterClassId::Kali,      { "Kali",      "char/player/kali",      "kali.msh",      "kali.skn",      "ka_normal.ani",     "kali_basic.act" } },
+        { CharacterClassId::Assassin,  { "Assassin",  "char/player/assassin",  "assassin.msh",  "assassin.skn",  "as_normal.ani",     "assassin_basic.act" } },
+        { CharacterClassId::Lancea,    { "Lancea",    "char/player/lencea",    "lencea.msh",    "lencea.skn",    "le_normal.ani",     "lencea_basic.act" } },
+        { CharacterClassId::Machina,   { "Machina",   "char/player/machina",   "mc_basic.msh",  "mc_basic.skn",  "mc_normal.ani",     "machina_basic.act" } },
+        { CharacterClassId::Vandar,    { "Vandar",    "char/player/vandar",    "vandar.msh",    "vandar.skn",    "va_normal.ani",     "vandar_basic.act" } },
+    };
+
+    auto itDef = kDefs.find(id);
+    if (itDef == kDefs.end()) return nullptr;
+
+    const auto& def = itDef->second;
+    auto bundle = std::make_shared<CharacterClassBundle>();
+    bundle->classId = id;
+    bundle->className = def.name;
+
+    const auto resRoot = m_items.GetResourcePath();
+    if (resRoot.empty()) return nullptr;
+
+    bundle->folderPath = resRoot / def.folder;
+    const auto meshPath = bundle->folderPath / def.mesh;
+    const auto skinPath = bundle->folderPath / def.skin;
+    const auto aniPath  = bundle->folderPath / def.ani;
+    const auto actPath  = bundle->folderPath / def.act;
+
+    bundle->mesh = LoadMeshCached(meshPath);
+    bundle->skin = LoadSkinCached(skinPath);
+    bundle->animSet = LoadAniCached(aniPath);
+    bundle->actions = LoadActCached(actPath);
+
+    if (bundle->skin && bundle->skin->valid) {
+        bundle->materials.resize(bundle->skin->subSkins.size());
+        for (size_t i = 0; i < bundle->skin->subSkins.size(); ++i) {
+            const auto& sub = bundle->skin->subSkins[i];
+            auto& mat = bundle->materials[i];
+            mat.emissivePower = sub.emissivePower;
+            mat.alphaTest = !sub.alphaBlend;
+
+            if (!sub.diffuseTexture.empty()) {
+                const auto texPath = m_items.FindModelResource(sub.diffuseTexture, skinPath);
+                if (!texPath.empty()) {
+                    mat.diffuse = LoadTextureCached(texPath);
+                }
+            }
+            if (!sub.emissiveTexture.empty()) {
+                const auto emiPath = m_items.FindModelResource(sub.emissiveTexture, skinPath);
+                if (!emiPath.empty()) {
+                    mat.emissive = LoadTextureCached(emiPath);
+                }
+            }
+        }
+    }
+
+    bundle->isLoaded = (bundle->mesh && bundle->mesh->valid && bundle->animSet && bundle->animSet->valid);
+
+    {
+        std::scoped_lock lock(m_assetMutex);
+        m_charClassCache[key] = bundle;
+    }
+    return bundle;
+}
+
+CharacterClassId WorkspaceEngine::InferClassForItem(const Data::DNItem& item) const {
+    // 1. Check skin / mesh filename prefix
+    std::string skinName = m_items.FindSkinPath(item).filename().string();
+    for (char& c : skinName) c = AsciiLower(c);
+
+    if (skinName.starts_with("wa_") || skinName.starts_with("warrior")) return CharacterClassId::Warrior;
+    if (skinName.starts_with("ar_") || skinName.starts_with("archer"))  return CharacterClassId::Archer;
+    if (skinName.starts_with("so_") || skinName.starts_with("soceress")) return CharacterClassId::Sorceress;
+    if (skinName.starts_with("cl_") || skinName.starts_with("cleric"))  return CharacterClassId::Cleric;
+    if (skinName.starts_with("ac_") || skinName.starts_with("academic")) return CharacterClassId::Academic;
+    if (skinName.starts_with("ka_") || skinName.starts_with("kali"))    return CharacterClassId::Kali;
+    if (skinName.starts_with("as_") || skinName.starts_with("assassin")) return CharacterClassId::Assassin;
+    if (skinName.starts_with("le_") || skinName.starts_with("lencea"))  return CharacterClassId::Lancea;
+    if (skinName.starts_with("mc_") || skinName.starts_with("machina")) return CharacterClassId::Machina;
+    if (skinName.starts_with("va_") || skinName.starts_with("vandar"))  return CharacterClassId::Vandar;
+
+    // 2. Check jobClass string
+    int j = 0;
+    std::string_view jc = item.jobClass;
+    if (auto semi = jc.find(';'); semi != std::string_view::npos) jc = jc.substr(0, semi);
+    while (!jc.empty() && (jc.front() == ' ' || jc.front() == '\t')) jc.remove_prefix(1);
+    if (!jc.empty()) {
+        std::from_chars(jc.data(), jc.data() + jc.size(), j);
+    }
+    if (j == 1) return CharacterClassId::Warrior;
+    if (j == 2) return CharacterClassId::Archer;
+    if (j == 3) return CharacterClassId::Sorceress;
+    if (j == 4) return CharacterClassId::Cleric;
+    if (j == 5) return CharacterClassId::Academic;
+    if (j == 6) return CharacterClassId::Kali;
+    if (j == 7) return CharacterClassId::Assassin;
+    if (j == 8) return CharacterClassId::Lancea;
+    if (j == 9) return CharacterClassId::Machina;
+    if (j == 10 || j == 201) return CharacterClassId::Vandar;
+
+    if (j >= 11 && j <= 18) return CharacterClassId::Warrior;
+    if (j >= 19 && j <= 26) return CharacterClassId::Archer;
+    if (j >= 27 && j <= 34) return CharacterClassId::Sorceress;
+    if (j >= 35 && j <= 42) return CharacterClassId::Cleric;
+    if (j >= 43 && j <= 48) return CharacterClassId::Academic;
+    if (j >= 49 && j <= 54) return CharacterClassId::Kali;
+    if (j >= 56 && j <= 59) return CharacterClassId::Assassin;
+    if (j >= 61 && j <= 64) return CharacterClassId::Lancea;
+    if (j >= 65 && j <= 68) return CharacterClassId::Machina;
+    if (j >= 69 && j <= 72) return CharacterClassId::Vandar;
+
+    return CharacterClassId::ItemOnly;
+}
+
+
+bool WorkspaceEngine::SetCustomItemIcon(int32_t iconIndex, const Graphics::ImageBuffer& tile) {
+    if (iconIndex < 0 || tile.width == 0 || tile.height == 0 || tile.rgbaData.empty()) {
+        return false;
+    }
+    {
+        std::scoped_lock lock(m_assetMutex);
+        m_iconTileCache[iconIndex] = tile;
+    }
+    if (!m_items.GetResourcePath().empty()) {
+        const auto customDir = m_items.GetResourcePath() / "ui" / "mainbar" / "custom";
+        std::error_code ec;
+        std::filesystem::create_directories(customDir, ec);
+        const auto customPath = customDir / std::format("icon_{:05d}.dds", iconIndex);
+        Graphics::DDSParser::SaveFileRGBA32(customPath, tile);
+    }
+    return true;
+}
+
+bool WorkspaceEngine::HasCustomItemIcon(int32_t iconIndex) const {
+    if (iconIndex < 0) return false;
+    if (!m_items.GetResourcePath().empty()) {
+        const auto customPath = m_items.GetResourcePath() / "ui" / "mainbar" / "custom" / std::format("icon_{:05d}.dds", iconIndex);
+        std::error_code ec;
+        if (std::filesystem::exists(customPath, ec)) return true;
+    }
+    std::scoped_lock lock(m_assetMutex);
+    return m_iconTileCache.contains(iconIndex);
 }
 
 } // namespace DNItemMaker::Engine

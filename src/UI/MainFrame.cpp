@@ -161,6 +161,15 @@ enum ControlIds : UINT {
     IDC_BTN_ZOOM_IN_3D,
     IDC_BTN_ZOOM_OUT_3D,
     IDC_BTN_RESET_CAMERA,
+    IDC_CMB_CHAR_CLASS = 42215,
+    IDC_CMB_CHAR_ACTION,
+    IDC_BTN_ANIM_PLAY_PAUSE,
+    IDC_BTN_ANIM_RESET,
+    IDC_CHK_ANIM_LOOP,
+    IDC_CMB_ANIM_SPEED,
+    IDC_BTN_PROP_ICON_EDITOR,
+    IDC_BTN_TOOLS_ACT_CONVERT,
+    IDC_BTN_TOOLS_ICON_STUDIO,
     IDC_EDIT_DONOR_ID,
     IDC_BTN_USE_SEL_DONOR,
     IDC_BTN_CLONE_VISUAL_BOTH,
@@ -595,6 +604,12 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
     ON_COMMAND(ID_CMD_ITEM_DELETE, &CMainFrame::OnItemDelete)
     ON_COMMAND(ID_CMD_ITEM_UNDO, &CMainFrame::OnItemUndo)
     ON_COMMAND(ID_CMD_ITEM_PICK_ICON, &CMainFrame::OnItemPickIcon)
+    ON_BN_CLICKED(IDC_BTN_PROP_ICON_EDITOR, &CMainFrame::OnOpenIconEditor)
+    ON_BN_CLICKED(IDC_BTN_TOOLS_ACT_CONVERT, &CMainFrame::OnOpenActConverter)
+    ON_BN_CLICKED(IDC_BTN_TOOLS_ICON_STUDIO, &CMainFrame::OnOpenIconEditor)
+    ON_COMMAND(IDC_BTN_PROP_ICON_EDITOR, &CMainFrame::OnOpenIconEditor)
+    ON_COMMAND(IDC_BTN_TOOLS_ACT_CONVERT, &CMainFrame::OnOpenActConverter)
+    ON_COMMAND(IDC_BTN_TOOLS_ICON_STUDIO, &CMainFrame::OnOpenIconEditor)
     ON_COMMAND(kCmdPickIconFromPreview, &CMainFrame::OnItemPickIcon)
     ON_COMMAND(ID_CMD_FOCUS_SEARCH, &CMainFrame::OnFocusSearch)
 
@@ -692,6 +707,12 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
     ON_BN_CLICKED(IDC_BTN_ZOOM_IN_3D, &CMainFrame::OnZoomIn3D)
     ON_BN_CLICKED(IDC_BTN_ZOOM_OUT_3D, &CMainFrame::OnZoomOut3D)
     ON_BN_CLICKED(IDC_BTN_RESET_CAMERA, &CMainFrame::OnResetCamera)
+    ON_CBN_SELCHANGE(IDC_CMB_CHAR_CLASS, &CMainFrame::OnCharClassChanged)
+    ON_CBN_SELCHANGE(IDC_CMB_CHAR_ACTION, &CMainFrame::OnCharActionChanged)
+    ON_BN_CLICKED(IDC_BTN_ANIM_PLAY_PAUSE, &CMainFrame::OnAnimPlayPauseClicked)
+    ON_BN_CLICKED(IDC_BTN_ANIM_RESET, &CMainFrame::OnAnimResetClicked)
+    ON_BN_CLICKED(IDC_CHK_ANIM_LOOP, &CMainFrame::OnAnimLoopToggled)
+    ON_CBN_SELCHANGE(IDC_CMB_ANIM_SPEED, &CMainFrame::OnAnimSpeedChanged)
     ON_BN_CLICKED(IDC_BTN_USE_SEL_DONOR, &CMainFrame::OnUseSelectedAsDonor)
     ON_BN_CLICKED(IDC_BTN_CLONE_VISUAL_BOTH, &CMainFrame::OnCopyVisualBoth)
     ON_BN_CLICKED(IDC_BTN_CLONE_SKIN_ONLY, &CMainFrame::OnCopyVisualSkinOnly)
@@ -732,7 +753,7 @@ CMainFrame::~CMainFrame() {
 BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs) {
     if (!CFrameWnd::PreCreateWindow(cs)) return FALSE;
     cs.style &= ~FWS_ADDTOTITLE;
-    cs.style |= WS_CLIPSIBLINGS;
+    cs.style |= WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
     return TRUE;
 }
 
@@ -752,7 +773,7 @@ bool CMainFrame::CreateMainWindow() {
 
     m_strTitle = Utf8ToWide(std::format("{} v{}", Resources::Version::AppName, Resources::Version::ShortVersionString));
     return CreateEx(0, cls, m_strTitle,
-                    WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS,
+                    WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
                     CRect(left, top, left + initW, top + initH),
                     nullptr, 0) != FALSE;
 }
@@ -827,6 +848,7 @@ void CMainFrame::BuildMenusAndAccelerators() {
     itemMenu.AppendMenuW(MF_STRING, ID_CMD_ITEM_DELETE, L"De&lete Selected Item");
     itemMenu.AppendMenuW(MF_SEPARATOR);
     itemMenu.AppendMenuW(MF_STRING, ID_CMD_ITEM_PICK_ICON, L"Browse &Icon Atlas...");
+    itemMenu.AppendMenuW(MF_STRING, IDC_BTN_PROP_ICON_EDITOR, L"Custom &Icon Studio && Pixel Creator...");
     itemMenu.AppendMenuW(MF_STRING, ID_CMD_FOCUS_SEARCH, L"&Find Item...\tCtrl+F");
     mainMenu.AppendMenuW(MF_POPUP, reinterpret_cast<UINT_PTR>(itemMenu.Detach()), L"&Edit & Item");
 
@@ -836,6 +858,8 @@ void CMainFrame::BuildMenusAndAccelerators() {
     toolsMenu.AppendMenuW(MF_STRING, ID_CMD_TOOLS_DRAGON_JEWEL, L"&Dragon Jewel && Socket Studio...\tCtrl+J");
     toolsMenu.AppendMenuW(MF_STRING, ID_CMD_TOOLS_SET_ITEM, L"&Set Item Bonuses && Pieces...\tCtrl+Shift+S");
     toolsMenu.AppendMenuW(MF_STRING, ID_CMD_TOOLS_ENCHANT, L"&Enchantment Curve && Upgrade Simulator...\tCtrl+Shift+E");
+    toolsMenu.AppendMenuW(MF_STRING, IDC_BTN_TOOLS_ACT_CONVERT, L"Convert &ACT v6 to v5 (Compatibility Tool)...");
+    toolsMenu.AppendMenuW(MF_STRING, IDC_BTN_TOOLS_ICON_STUDIO, L"Custom &Item Icon Studio...");
     toolsMenu.AppendMenuW(MF_SEPARATOR);
     toolsMenu.AppendMenuW(MF_STRING, ID_CMD_WORKSPACE_AUDIT, L"Run Full Workspace &Integrity Audit...");
     toolsMenu.AppendMenuW(MF_STRING, ID_CMD_VERIFY_ROUNDTRIP, L"&Verify Binary DNT / UIString Round-Trip...");
@@ -1032,6 +1056,7 @@ void CMainFrame::CreateChildControls() {
     m_lblIconIdx.Create(L"Icon Index:", WS_CHILD, z, this); regTab(0, m_lblIconIdx);
     m_edtIconIndex.Create(WS_CHILD | WS_TABSTOP | WS_BORDER | ES_NUMBER, z, this, IDC_EDIT_ICON_INDEX); regTab(0, m_edtIconIndex);
     m_btnBrowseIcon.Create(L"Pick Icon...", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, ID_CMD_ITEM_PICK_ICON); regTab(0, m_btnBrowseIcon);
+    m_btnIconEditor.Create(L"Icon Studio...", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_PROP_ICON_EDITOR); regTab(0, m_btnIconEditor);
 
     m_lblLevel.Create(L"Level Limit:", WS_CHILD, z, this); regTab(0, m_lblLevel);
     m_edtLevel.Create(WS_CHILD | WS_TABSTOP | WS_BORDER | ES_NUMBER, z, this, IDC_EDIT_LEVEL); regTab(0, m_edtLevel);
@@ -1215,8 +1240,44 @@ void CMainFrame::CreateChildControls() {
     m_btnZoomOut3D.Create(L"Zoom -", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_ZOOM_OUT_3D); regTab(3, m_btnZoomOut3D);
     m_btnResetCam.Create(L"Reset Camera", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_RESET_CAMERA); regTab(3, m_btnResetCam);
     m_btnOpenIconAtlas.Create(L"Open 2D Icon Atlas...", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, ID_CMD_ITEM_PICK_ICON); regTab(3, m_btnOpenIconAtlas);
+    m_btnViewportActConvert.Create(L"Convert ACT v6->v5...", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_TOOLS_ACT_CONVERT); regTab(3, m_btnViewportActConvert);
+
+    m_lblCharClass.Create(L"Character Class:", WS_CHILD, z, this); regTab(3, m_lblCharClass);
+    m_cmbCharClass.Create(WS_CHILD | WS_TABSTOP | CBS_DROPDOWNLIST, z, this, IDC_CMB_CHAR_CLASS);
+    for (const wchar_t* clsName : { L"Item Only (None)", L"1. Warrior", L"2. Archer", L"3. Sorceress",
+                                    L"4. Cleric", L"5. Academic", L"6. Kali", L"7. Assassin",
+                                    L"8. Lancea", L"9. Machina", L"10. Vandar" }) {
+        m_cmbCharClass.AddString(clsName);
+    }
+    m_cmbCharClass.SetCurSel(0);
+    regTab(3, m_cmbCharClass);
+
+    m_lblCharAction.Create(L"Action:", WS_CHILD, z, this); regTab(3, m_lblCharAction);
+    m_cmbCharAction.Create(WS_CHILD | WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL, z, this, IDC_CMB_CHAR_ACTION);
+    m_cmbCharAction.AddString(L"Stand");
+    m_cmbCharAction.SetCurSel(0);
+    regTab(3, m_cmbCharAction);
+
+    m_btnAnimPlayPause.Create(L"⏸ Pause", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_ANIM_PLAY_PAUSE);
+    regTab(3, m_btnAnimPlayPause);
+
+    m_btnAnimReset.Create(L"⏮ Reset", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_ANIM_RESET);
+    regTab(3, m_btnAnimReset);
+
+    m_chkAnimLoop.Create(L"Loop", WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, z, this, IDC_CHK_ANIM_LOOP);
+    m_chkAnimLoop.SetCheck(BST_CHECKED);
+    regTab(3, m_chkAnimLoop);
+
+    m_lblAnimSpeed.Create(L"Speed:", WS_CHILD, z, this); regTab(3, m_lblAnimSpeed);
+    m_cmbAnimSpeed.Create(WS_CHILD | WS_TABSTOP | CBS_DROPDOWNLIST, z, this, IDC_CMB_ANIM_SPEED);
+    for (const wchar_t* spd : { L"0.25x", L"0.5x", L"1.0x", L"1.5x", L"2.0x" }) {
+        m_cmbAnimSpeed.AddString(spd);
+    }
+    m_cmbAnimSpeed.SetCurSel(2); // 1.0x
+    regTab(3, m_cmbAnimSpeed);
 
     m_previewWnd.Create(this, z, IDC_PREVIEW_WND);
+    m_previewWnd.SetWorkspaceEngine(&m_engine);
     m_previewWnd.ShowWindow(SW_HIDE);
     regTab(3, m_previewWnd);
 
@@ -1322,6 +1383,8 @@ void CMainFrame::CreateChildControls() {
     m_btnOpenDragonJewelStudio.Create(L"Dragon Jewel & Socket Studio (Ctrl+J)...", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, ID_CMD_TOOLS_DRAGON_JEWEL); regTab(6, m_btnOpenDragonJewelStudio);
     m_btnOpenSetItemStudio.Create(L"Set Item Bonuses & Pieces (Ctrl+Shift+S)...", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, ID_CMD_TOOLS_SET_ITEM); regTab(6, m_btnOpenSetItemStudio);
     m_btnOpenEnchantStudio.Create(L"Enchantment Curve Simulator (Ctrl+Shift+E)...", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, ID_CMD_TOOLS_ENCHANT); regTab(6, m_btnOpenEnchantStudio);
+    m_btnToolsActConvert.Create(L"Convert ACT v6 -> v5...", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_TOOLS_ACT_CONVERT); regTab(6, m_btnToolsActConvert);
+    m_btnToolsIconStudio.Create(L"Custom Icon Studio...", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, IDC_BTN_TOOLS_ICON_STUDIO); regTab(6, m_btnToolsIconStudio);
     m_btnToolClearCache.Create(L"Clear Native Caches", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, ID_CMD_CLEAR_CACHE); regTab(6, m_btnToolClearCache);
     m_btnToolSnapshot.Create(L"Crash Snapshot (.dmp)", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, ID_CMD_CAPTURE_SNAPSHOT); regTab(6, m_btnToolSnapshot);
     m_btnToolLogs.Create(L"Open Logs Folder", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, z, this, ID_CMD_OPEN_LOGS); regTab(6, m_btnToolLogs);
@@ -1514,11 +1577,15 @@ void CMainFrame::ShowActiveEditorTab(int tabIdx) {
     GetClientRect(&client);
     LayoutControls(client.Width(), client.Height());
 
-    // 3. Show controls of the new active tab
+    // 3. Show controls of the new active tab and force immediate redraw
     for (CWnd* w : m_tabControls[static_cast<size_t>(tabIdx)]) {
         if (w && w->GetSafeHwnd()) {
             w->ShowWindow(SW_SHOW);
+            w->Invalidate(FALSE);
         }
+    }
+    if (m_tabCtrl.GetSafeHwnd()) {
+        m_tabCtrl.Invalidate(FALSE);
     }
 
     // 4. Tab-specific data synchronization & refresh
@@ -1530,11 +1597,28 @@ void CMainFrame::ShowActiveEditorTab(int tabIdx) {
             PopulateStatWidgetsFromItem(*cur);
         }
     } else if (tabIdx == 3 && m_selectedItemId > 0) {
+        m_previewWnd.SetWorkspaceEngine(&m_engine);
         if (const auto* cur = m_engine.Items().GetItem(m_selectedItemId)) {
             Graphics::ImageBuffer iconTile;
             const bool hasIcon = m_engine.GetItemIcon(cur->iconIndex, iconTile);
             auto bundle = m_engine.LoadModelForItem(*cur);
             m_previewWnd.SetPreviewData(cur, hasIcon ? &iconTile : nullptr, std::move(bundle));
+
+            // Auto-infer character class if currently ItemOnly
+            if (m_previewWnd.GetCharacterClass() == Engine::CharacterClassId::ItemOnly) {
+                const auto inferred = m_engine.InferClassForItem(*cur);
+                if (inferred != Engine::CharacterClassId::ItemOnly) {
+                    m_cmbCharClass.SetCurSel(static_cast<int>(inferred));
+                    m_previewWnd.SetCharacterClass(inferred);
+
+                    m_cmbCharAction.ResetContent();
+                    const auto acts = m_previewWnd.GetAvailableActions();
+                    for (const auto& a : acts) {
+                        m_cmbCharAction.AddString(Utf8ToWide(a));
+                    }
+                    if (m_cmbCharAction.GetCount() > 0) m_cmbCharAction.SetCurSel(0);
+                }
+            }
         }
         m_previewWnd.SetAutoSpin(m_chkAutoSpin.GetCheck() == BST_CHECKED);
         m_previewWnd.Invalidate(FALSE);
@@ -1840,9 +1924,11 @@ void CMainFrame::LayoutControls(int cx, int cy) {
 
             // Row 2: Icon Index + Pick Icon button
             place(m_lblIconIdx, c0x, cy0 + DpiScale(2, dpi), lW, sRowH);
-            const int iconBtnW = DpiScale(86, dpi);
-            place(m_edtIconIndex, c0x + lW, cy0, c0w - lW - iconBtnW - ctlGap, sRowH);
-            place(m_btnBrowseIcon, c0x + c0w - iconBtnW, cy0, iconBtnW, sRowH);
+            const int iconBtnsTotalW = DpiScale(170, dpi);
+            const int singleBtnW = (iconBtnsTotalW - ctlGap) / 2;
+            place(m_edtIconIndex, c0x + lW, cy0, c0w - lW - iconBtnsTotalW - ctlGap, sRowH);
+            place(m_btnBrowseIcon, c0x + c0w - iconBtnsTotalW, cy0, singleBtnW, sRowH);
+            place(m_btnIconEditor, c0x + c0w - singleBtnW, cy0, singleBtnW, sRowH);
             cy0 += sRowH + vGap;
 
             // Row 3: Level Limit & Hero Level side-by-side
@@ -2111,17 +2197,42 @@ void CMainFrame::LayoutControls(int cx, int cy) {
             const int spinW = DpiScale(110, dpi);
             place(m_chkAutoSpin, cx3, my + DpiScale(2, dpi), spinW, DpiScale(22, dpi)); cx3 += spinW + ctlGap;
 
-            const int zoomW = DpiScale(64, dpi);
+            const int zoomW = DpiScale(58, dpi);
             const int resetW = DpiScale(86, dpi);
-            const int atlasW = DpiScale(125, dpi);
+            const int atlasW = DpiScale(130, dpi);
             place(m_btnZoomIn3D, cx3, my, zoomW, rowH); cx3 += zoomW + ctlGap;
             place(m_btnZoomOut3D, cx3, my, zoomW, rowH); cx3 += zoomW + ctlGap;
             place(m_btnResetCam, cx3, my, resetW, rowH); cx3 += resetW + ctlGap;
-            if (cx3 + atlasW <= mx + mw) {
-                place(m_btnOpenIconAtlas, cx3, my, atlasW, rowH);
+            const int actV5BtnW = DpiScale(130, dpi);
+            place(m_btnOpenIconAtlas, cx3, my, atlasW, rowH); cx3 += atlasW + ctlGap;
+            if (cx3 + actV5BtnW <= mx + mw) {
+                place(m_btnViewportActConvert, cx3, my, actV5BtnW, rowH);
             } else {
-                place(m_btnOpenIconAtlas, mx + mw - atlasW, my, atlasW, rowH);
+                place(m_btnViewportActConvert, mx + mw - actV5BtnW, my, actV5BtnW, rowH);
             }
+            my += rowH + DpiScale(6, dpi);
+
+            // Row 2: ACT Viewer Toolbar (Class, Action, Play/Pause, Reset, Loop, Speed)
+            int rx2 = mx;
+            place(m_lblCharClass, rx2, my + DpiScale(3, dpi), DpiScale(92, dpi), rowH); rx2 += DpiScale(96, dpi);
+            const int classCmbW = DpiScale(125, dpi);
+            place(m_cmbCharClass, rx2, my, classCmbW, dropH); rx2 += classCmbW + ctlGap;
+
+            place(m_lblCharAction, rx2, my + DpiScale(3, dpi), DpiScale(44, dpi), rowH); rx2 += DpiScale(48, dpi);
+            const int actCmbW = DpiScale(150, dpi);
+            place(m_cmbCharAction, rx2, my, actCmbW, dropH); rx2 += actCmbW + ctlGap;
+
+            const int ppBtnW = DpiScale(68, dpi);
+            place(m_btnAnimPlayPause, rx2, my, ppBtnW, btnH); rx2 += ppBtnW + ctlGap;
+            const int rstBtnW = DpiScale(62, dpi);
+            place(m_btnAnimReset, rx2, my, rstBtnW, btnH); rx2 += rstBtnW + ctlGap;
+
+            const int loopW = DpiScale(54, dpi);
+            place(m_chkAnimLoop, rx2, my + DpiScale(2, dpi), loopW, DpiScale(22, dpi)); rx2 += loopW + ctlGap;
+
+            place(m_lblAnimSpeed, rx2, my + DpiScale(3, dpi), DpiScale(42, dpi), rowH); rx2 += DpiScale(46, dpi);
+            const int spdCmbW = DpiScale(68, dpi);
+            place(m_cmbAnimSpeed, rx2, my, spdCmbW, dropH);
             my += rowH + DpiScale(8, dpi);
 
             const int clonerY = rc3dCard.bottom - clonerH + DpiScale(14, dpi);
@@ -2282,10 +2393,12 @@ void CMainFrame::LayoutControls(int cx, int cy) {
             place(m_btnOpenDragonJewelStudio, col1X, tyCol1, colW6, btnH); tyCol1 += btnH + DpiScale(6, dpi);
             place(m_btnOpenSetItemStudio, col1X, tyCol1, colW6, btnH); tyCol1 += btnH + DpiScale(6, dpi);
             place(m_btnOpenEnchantStudio, col1X, tyCol1, colW6, btnH); tyCol1 += btnH + DpiScale(6, dpi);
+            place(m_btnToolsActConvert, col1X, tyCol1, colW6, btnH); tyCol1 += btnH + DpiScale(6, dpi);
             place(m_btnToolLogs, col1X, tyCol1, colW6, btnH);
 
             // Column 2: Cache, Snapshots & JSON Packs
             int tyCol2 = ty0;
+            place(m_btnToolsIconStudio, col2X, tyCol2, colW6, btnH); tyCol2 += btnH + DpiScale(6, dpi);
             place(m_btnToolClearCache, col2X, tyCol2, colW6, btnH); tyCol2 += btnH + DpiScale(6, dpi);
             place(m_btnToolSnapshot, col2X, tyCol2, colW6, btnH); tyCol2 += btnH + DpiScale(6, dpi);
             place(m_btnJsonExpSel, col2X, tyCol2, colW6, btnH); tyCol2 += btnH + DpiScale(6, dpi);
@@ -5167,6 +5280,95 @@ void CMainFrame::OnToolsEnchantStudio() {
         }
     }
     CEnchantStudioDlg dlg(m_engine, encId, m_selectedItemId, this);
+    dlg.DoModal();
+}
+
+
+void CMainFrame::OnCharClassChanged() {
+    const int sel = m_cmbCharClass.GetCurSel();
+    if (sel < 0) return;
+    const auto cls = static_cast<Engine::CharacterClassId>(sel);
+    m_previewWnd.SetCharacterClass(cls);
+
+    m_cmbCharAction.ResetContent();
+    const auto acts = m_previewWnd.GetAvailableActions();
+    for (const auto& a : acts) {
+        m_cmbCharAction.AddString(Utf8ToWide(a));
+    }
+    if (m_cmbCharAction.GetCount() > 0) {
+        m_cmbCharAction.SetCurSel(0);
+        CString text;
+        m_cmbCharAction.GetLBText(0, text);
+        m_previewWnd.SetAction(WideToUtf8(text.GetString()));
+    }
+}
+
+void CMainFrame::OnCharActionChanged() {
+    const int sel = m_cmbCharAction.GetCurSel();
+    if (sel < 0) return;
+    CString text;
+    m_cmbCharAction.GetLBText(sel, text);
+    m_previewWnd.SetAction(WideToUtf8(text.GetString()));
+}
+
+void CMainFrame::OnAnimPlayPauseClicked() {
+    const bool nowPlaying = !m_previewWnd.IsPlaying();
+    m_previewWnd.SetPlaying(nowPlaying);
+    m_btnAnimPlayPause.SetWindowTextW(nowPlaying ? L"⏸ Pause" : L"▶ Play");
+}
+
+void CMainFrame::OnAnimResetClicked() {
+    m_previewWnd.ResetAnimPlayback();
+}
+
+void CMainFrame::OnAnimLoopToggled() {
+    m_previewWnd.SetLoop(m_chkAnimLoop.GetCheck() == BST_CHECKED);
+}
+
+void CMainFrame::OnAnimSpeedChanged() {
+    const int sel = m_cmbAnimSpeed.GetCurSel();
+    float spd = 1.0f;
+    switch (sel) {
+        case 0: spd = 0.25f; break;
+        case 1: spd = 0.5f; break;
+        case 2: spd = 1.0f; break;
+        case 3: spd = 1.5f; break;
+        case 4: spd = 2.0f; break;
+        default: spd = 1.0f; break;
+    }
+    m_previewWnd.SetSpeed(spd);
+}
+
+
+void CMainFrame::OnOpenIconEditor() {
+    if (!m_engine.IsWorkspaceLoaded()) return;
+    int32_t curIcon = ParseIntOr(m_edtIconIndex, 0);
+    CIconEditorDlg dlg(m_engine, m_selectedItemId, curIcon, this);
+    if (dlg.DoModal() == IDOK) {
+        Graphics::ImageBuffer tile;
+        const bool hasIcon = m_engine.GetItemIcon(curIcon, tile);
+        const auto* cur = m_engine.Items().GetItem(m_selectedItemId);
+        if (cur) {
+            const size_t nameCollisions = (cur->nameId > 0 && m_engine.Items().CountItemsUsingMid(cur->nameId) > 1)
+                                              ? (m_engine.Items().CountItemsUsingMid(cur->nameId) - 1)
+                                              : 0;
+            UpdateLiveSummaryPreview(
+                cur->name,
+                cur->rank,
+                curIcon,
+                hasIcon ? &tile : nullptr,
+                nameCollisions
+            );
+            m_previewWnd.UpdateIconOnly(curIcon, cur->name, cur->rank, hasIcon ? &tile : nullptr);
+        }
+        if (m_chkAutoApply.GetCheck() == BST_CHECKED) {
+            OnItemApply();
+        }
+    }
+}
+
+void CMainFrame::OnOpenActConverter() {
+    CActConverterDlg dlg(m_engine, this);
     dlg.DoModal();
 }
 

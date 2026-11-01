@@ -122,6 +122,8 @@ protected:
     afx_msg void OnItemDelete();
     afx_msg void OnItemUndo();
     afx_msg void OnItemPickIcon();
+    afx_msg void OnOpenIconEditor();
+    afx_msg void OnOpenActConverter();
     afx_msg void OnFocusSearch();
 
     afx_msg void OnToolsVerifyRoundTrip();
@@ -190,6 +192,12 @@ protected:
 
     afx_msg void OnRenderModeChanged();
     afx_msg void OnToggleAutoSpin();
+    afx_msg void OnCharClassChanged();
+    afx_msg void OnCharActionChanged();
+    afx_msg void OnAnimPlayPauseClicked();
+    afx_msg void OnAnimResetClicked();
+    afx_msg void OnAnimLoopToggled();
+    afx_msg void OnAnimSpeedChanged();
     afx_msg void OnZoomIn3D();
     afx_msg void OnZoomOut3D();
     afx_msg void OnResetCamera();
@@ -450,7 +458,7 @@ private:
     CStatic m_lblRank, m_lblIconIdx, m_lblLevel, m_lblHeroLevel, m_lblOverlap, m_lblSell, m_lblGearScore, m_lblDurability;
     CComboBox m_cmbEditRank;
     CFlatEdit m_edtIconIndex;
-    CFlatButton m_btnBrowseIcon;
+    CFlatButton m_btnBrowseIcon, m_btnIconEditor;
     CFlatEdit m_edtLevel, m_edtHeroLevel, m_edtOverlap, m_edtSell, m_edtGearScore, m_edtDurability;
     CFlatButton m_btnAutoSell, m_btnAutoGearScore, m_btnAutoDurability, m_btnAutoAllEconomy;
     CButton m_chkCash, m_chkStorage, m_chkWStorage;
@@ -505,14 +513,25 @@ private:
     CStatic m_lblStatHdrSlot, m_lblStatHdrType, m_lblStatHdrProb, m_lblStatHdrMin, m_lblStatHdrMax;
     std::array<StatRowWidgets, Data::kStateSlotCount> m_statWidgets;
 
-    // Tab 3: 3D Viewport
+    // Tab 3: 3D Viewport & ACT Animation Viewer
     CStatic m_lblRenderMode;
     CComboBox m_cmbRenderMode;
     CButton m_chkAutoSpin;
     CFlatButton m_btnZoomIn3D;
     CFlatButton m_btnZoomOut3D;
     CFlatButton m_btnResetCam;
-    CFlatButton m_btnOpenIconAtlas;
+    CFlatButton m_btnOpenIconAtlas, m_btnViewportActConvert;
+
+    CStatic m_lblCharClass;
+    CComboBox m_cmbCharClass;
+    CStatic m_lblCharAction;
+    CComboBox m_cmbCharAction;
+    CFlatButton m_btnAnimPlayPause;
+    CFlatButton m_btnAnimReset;
+    CButton m_chkAnimLoop;
+    CStatic m_lblAnimSpeed;
+    CComboBox m_cmbAnimSpeed;
+
     CModelPreviewWnd m_previewWnd;
 
     CStatic m_lblDonorId;
@@ -567,6 +586,8 @@ private:
     CFlatButton m_btnOpenDragonJewelStudio;
     CFlatButton m_btnOpenSetItemStudio;
     CFlatButton m_btnOpenEnchantStudio;
+    CFlatButton m_btnToolsActConvert;
+    CFlatButton m_btnToolsIconStudio;
 
     // Tab 7: Charm & Gacha Box Probability Studio
     CStatic m_lblCharmSelector;
