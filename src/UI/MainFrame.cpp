@@ -605,7 +605,7 @@ bool CMainFrame::CreateMainWindow() {
     const int left = std::max(0, (screenW - initW) / 2);
     const int top = std::max(0, (screenH - initH) / 2);
 
-    CString cls = AfxRegisterWndClass(0,
+    CString cls = AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS,
                                       ::LoadCursor(nullptr, IDC_ARROW),
                                       Theme::ChromeBrush(),
                                       AfxGetApp()->LoadIconW(IDI_APP_ICON));
@@ -1365,7 +1365,7 @@ void CMainFrame::ShowActiveEditorTab(int tabIdx) {
     CRect client;
     GetClientRect(&client);
     LayoutControls(client.Width(), client.Height());
-    Invalidate(FALSE);
+    RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 }
 
 void CMainFrame::OnTabSelChange(NMHDR* /*pNMHDR*/, LRESULT* pResult) {
@@ -1450,7 +1450,7 @@ void CMainFrame::OnSize(UINT nType, int cx, int cy) {
     if (nType == SIZE_MINIMIZED || !m_lstItems.GetSafeHwnd()) return;
     RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
     LayoutControls(cx, cy);
-    Invalidate(FALSE);
+    RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 }
 
 void CMainFrame::OnItemListFocusChange(NMHDR*, LRESULT* pResult) {
@@ -1493,11 +1493,11 @@ void CMainFrame::LayoutControls(int cx, int cy) {
     auto place = [&](CWnd& w, int x, int y, int width, int height) {
         if (w.GetSafeHwnd()) {
             hdwp = ::DeferWindowPos(hdwp, w.GetSafeHwnd(), nullptr, x, y, std::max(0, width), std::max(0, height),
-                                    SWP_NOZORDER | SWP_NOACTIVATE);
+                                    SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS);
         }
     };
 
-    // 1. Top command bar
+    // 1. Top command bar (Responsive layout: primary left actions, responsive right-docked audit/verify)
     const int hBtnH = DpiScale(26, dpi);
     const int hBtnY = (hdrH - hBtnH) / 2;
     int hx = pad;
@@ -1507,8 +1507,18 @@ void CMainFrame::LayoutControls(int cx, int cy) {
     place(m_btnHdrUndo, hx, hBtnY, DpiScale(68, dpi), hBtnH); hx += DpiScale(72, dpi);
     place(m_btnHdrSaveToFolder, hx, hBtnY, DpiScale(146, dpi), hBtnH); hx += DpiScale(150, dpi);
     place(m_btnHdrCommit, hx, hBtnY, DpiScale(114, dpi), hBtnH); hx += DpiScale(118, dpi);
-    place(m_btnHdrAudit, hx, hBtnY, DpiScale(78, dpi), hBtnH); hx += DpiScale(82, dpi);
-    place(m_btnHdrVerify, hx, hBtnY, DpiScale(78, dpi), hBtnH);
+
+    const int auditW = DpiScale(78, dpi);
+    const int verifyW = DpiScale(78, dpi);
+    const int rightGroupW = auditW + verifyW + ctlGap;
+    int rightGx = cx - pad - rightGroupW;
+    if (rightGx > hx + ctlGap) {
+        place(m_btnHdrAudit, rightGx, hBtnY, auditW, hBtnH);
+        place(m_btnHdrVerify, rightGx + auditW + ctlGap, hBtnY, verifyW, hBtnH);
+    } else {
+        place(m_btnHdrAudit, hx, hBtnY, auditW, hBtnH); hx += auditW + ctlGap;
+        place(m_btnHdrVerify, hx, hBtnY, verifyW, hBtnH);
+    }
 
     // 2. Left pane (Item Browser)
     place(m_grpBrowser, m_rcLeftCard.left, m_rcLeftCard.top, m_rcLeftCard.Width(), m_rcLeftCard.Height());
@@ -1535,13 +1545,22 @@ void CMainFrame::LayoutControls(int cx, int cy) {
 
     const int lBtmY = m_rcLeftCard.bottom - DpiScale(10, dpi) - btnH;
     const int matchLblY = lBtmY - DpiScale(18, dpi);
-    place(m_lstItems, lx, ly, lw, std::max(60, matchLblY - ly - DpiScale(4, dpi)));
+    const int listH = std::max(60, matchLblY - ly - DpiScale(4, dpi));
+    place(m_lstItems, lx, ly, lw, listH);
     place(m_lblMatchCount, lx, matchLblY, lw, DpiScale(16, dpi));
 
     const int actW3 = (lw - ctlGap * 2) / 3;
     place(m_btnNewItem, lx, lBtmY, actW3, btnH);
     place(m_btnDupItem, lx + actW3 + ctlGap, lBtmY, actW3, btnH);
     place(m_btnDelItem, lx + (actW3 + ctlGap) * 2, lBtmY, lw - (actW3 + ctlGap) * 2, btnH);
+
+    // Dynamic auto-fit for List View Column 1 (Item Name) so it fills remaining width without scrollbars
+    if (m_lstItems.GetSafeHwnd()) {
+        const int fixedCols = DpiScale(82 + 64 + 40 + 92 + 135, dpi); // Cols 0, 2, 3, 4, 5
+        const int vScrollW = ::GetSystemMetrics(SM_CXVSCROLL) + DpiScale(4, dpi);
+        const int col1W = std::max(DpiScale(120, dpi), lw - fixedCols - vScrollW);
+        m_lstItems.SetColumnWidth(1, col1W);
+    }
 
     // 3. Right pane top (Item Summary)
     const int rx = m_rcRightCard.left;
@@ -1550,12 +1569,12 @@ void CMainFrame::LayoutControls(int cx, int cy) {
     place(m_grpSummary, rx, m_rcRightCard.top, rw, bannerH);
 
     const int iconSz = DpiScale(50, dpi);
-    const int iconY = m_rcRightCard.top + DpiScale(16, dpi);
+    const int iconY = m_rcRightCard.top + DpiScale(14, dpi);
     place(m_bannerIconWnd, rx + DpiScale(12, dpi), iconY, iconSz, iconSz);
 
     const int metaX = rx + DpiScale(12, dpi) + iconSz + DpiScale(10, dpi);
-    const int pickBtnW = DpiScale(86, dpi);
-    const int metaW = rw - (metaX - rx) - pickBtnW - DpiScale(16, dpi);
+    const int pickBtnW = DpiScale(96, dpi);
+    const int metaW = std::max(80, rw - (metaX - rx) - pickBtnW - DpiScale(20, dpi));
 
     place(m_lblBannerName, metaX, iconY, metaW, DpiScale(18, dpi));
     place(m_lblBannerMeta, metaX, iconY + DpiScale(18, dpi), metaW, DpiScale(16, dpi));
@@ -1569,15 +1588,36 @@ void CMainFrame::LayoutControls(int cx, int cy) {
     const int tabStripH = DpiScale(26, dpi);
     place(m_tabCtrl, rx, tabBarY, rw, tabStripH);
 
-    // 5. Right pane bottom (Bottom Actions)
+    // 5. Right pane bottom (Bottom Actions - collision-proof responsive layout)
     place(m_grpBottomActions, rx, btmBarY, rw, btmBarH);
     const int by = btmBarY + DpiScale(14, dpi);
-    place(m_chkAutoApply, rx + DpiScale(12, dpi), by + DpiScale(2, dpi), DpiScale(140, dpi), DpiScale(22, dpi));
-    place(m_btnApplyItem, rx + DpiScale(158, dpi), by, DpiScale(130, dpi), btnH);
-    place(m_btnRevertItem, rx + DpiScale(294, dpi), by, DpiScale(76, dpi), btnH);
-    place(m_btnUndoBottom, rx + DpiScale(376, dpi), by, DpiScale(84, dpi), btnH);
-    place(m_btnSaveToFolder, rx + rw - DpiScale(266, dpi), by, DpiScale(148, dpi), btnH);
-    place(m_btnCommitDisk, rx + rw - DpiScale(112, dpi), by, DpiScale(102, dpi), btnH);
+
+    const int commitW = DpiScale(106, dpi);
+    const int saveW = DpiScale(148, dpi);
+    const int commitX = rx + rw - commitW - DpiScale(12, dpi);
+    const int saveX = commitX - saveW - ctlGap;
+    place(m_btnCommitDisk, commitX, by, commitW, btnH);
+    place(m_btnSaveToFolder, saveX, by, saveW, btnH);
+
+    const int availLeftW = saveX - (rx + DpiScale(12, dpi)) - ctlGap;
+    int curBx = rx + DpiScale(12, dpi);
+
+    const int autoApplyW = std::clamp(availLeftW * 26 / 100, DpiScale(100, dpi), DpiScale(140, dpi));
+    place(m_chkAutoApply, curBx, by + DpiScale(2, dpi), autoApplyW, DpiScale(22, dpi));
+    curBx += autoApplyW + ctlGap;
+
+    const int applyW = std::clamp(availLeftW * 24 / 100, DpiScale(84, dpi), DpiScale(125, dpi));
+    place(m_btnApplyItem, curBx, by, applyW, btnH);
+    curBx += applyW + ctlGap;
+
+    const int revW = std::clamp(availLeftW * 14 / 100, DpiScale(58, dpi), DpiScale(76, dpi));
+    place(m_btnRevertItem, curBx, by, revW, btnH);
+    curBx += revW + ctlGap;
+
+    const int undoW = std::min(DpiScale(84, dpi), saveX - curBx - ctlGap);
+    if (undoW > DpiScale(36, dpi)) {
+        place(m_btnUndoBottom, curBx, by, undoW, btnH);
+    }
 
     // Tab content area positioned below the tab strip without overlapping
     const int contentX = rx + DpiScale(8, dpi);
@@ -1586,7 +1626,7 @@ void CMainFrame::LayoutControls(int cx, int cy) {
     const int contentH = std::max(60, btmBarY - contentY - ctlGap);
 
     switch (m_activeTab) {
-        case 0: { // Overview & Properties
+        case 0: { // Overview & Properties (Compact responsive layout: zero vertical overflow at 720p)
             const int cardGap = DpiScale(10, dpi);
             const int cardW = (contentW - cardGap) / 2;
             CRect rcCard0(contentX, contentY, contentX + cardW, contentY + contentH);
@@ -1597,98 +1637,114 @@ void CMainFrame::LayoutControls(int cx, int cy) {
 
             const int c0x = rcCard0.left + DpiScale(14, dpi);
             const int c0w = rcCard0.Width() - DpiScale(28, dpi);
-            int cy0 = rcCard0.top + DpiScale(26, dpi);
-            const int lW = DpiScale(90, dpi);
+            int cy0 = rcCard0.top + DpiScale(22, dpi);
+            const int lW = DpiScale(84, dpi);
+            const int sRowH = Theme::DluY(13, bu);
+            const int vGap = DpiScale(3, dpi);
 
-            place(m_lblRank, c0x, cy0 + DpiScale(3, dpi), lW, rowH);
+            // Row 1: Rank
+            place(m_lblRank, c0x, cy0 + DpiScale(2, dpi), lW, sRowH);
             place(m_cmbEditRank, c0x + lW, cy0, c0w - lW, dropH);
-            cy0 += rowH + ctlVGap;
+            cy0 += sRowH + vGap;
 
-            place(m_lblIconIdx, c0x, cy0 + DpiScale(3, dpi), lW, rowH);
+            // Row 2: Icon Index + Pick Icon button
+            place(m_lblIconIdx, c0x, cy0 + DpiScale(2, dpi), lW, sRowH);
             const int iconBtnW = DpiScale(86, dpi);
-            place(m_edtIconIndex, c0x + lW, cy0, c0w - lW - iconBtnW - ctlGap, rowH);
-            place(m_btnBrowseIcon, c0x + c0w - iconBtnW, cy0, iconBtnW, rowH);
-            cy0 += rowH + ctlVGap;
+            place(m_edtIconIndex, c0x + lW, cy0, c0w - lW - iconBtnW - ctlGap, sRowH);
+            place(m_btnBrowseIcon, c0x + c0w - iconBtnW, cy0, iconBtnW, sRowH);
+            cy0 += sRowH + vGap;
 
-            place(m_lblLevel, c0x, cy0 + DpiScale(3, dpi), lW, rowH);
-            place(m_edtLevel, c0x + lW, cy0, c0w - lW, rowH);
-            cy0 += rowH + ctlVGap;
+            // Row 3: Level Limit & Hero Level side-by-side
+            const int halfRowW = (c0w - ctlGap) / 2;
+            const int subLblW = DpiScale(68, dpi);
+            place(m_lblLevel, c0x, cy0 + DpiScale(2, dpi), subLblW, sRowH);
+            place(m_edtLevel, c0x + subLblW, cy0, halfRowW - subLblW, sRowH);
 
-            place(m_lblHeroLevel, c0x, cy0 + DpiScale(3, dpi), lW, rowH);
-            place(m_edtHeroLevel, c0x + lW, cy0, c0w - lW, rowH);
-            cy0 += rowH + ctlVGap;
+            const int hLvlX = c0x + halfRowW + ctlGap;
+            place(m_lblHeroLevel, hLvlX, cy0 + DpiScale(2, dpi), subLblW, sRowH);
+            place(m_edtHeroLevel, hLvlX + subLblW, cy0, c0w - (hLvlX - c0x) - subLblW, sRowH);
+            cy0 += sRowH + vGap;
 
-            place(m_lblOverlap, c0x, cy0 + DpiScale(3, dpi), lW, rowH);
-            place(m_edtOverlap, c0x + lW, cy0, c0w - lW, rowH);
-            cy0 += rowH + ctlVGap;
+            // Row 4: Max Stack & Durability side-by-side
+            place(m_lblOverlap, c0x, cy0 + DpiScale(2, dpi), subLblW, sRowH);
+            place(m_edtOverlap, c0x + subLblW, cy0, halfRowW - subLblW, sRowH);
 
-            const int autoW = DpiScale(58, dpi);
-            place(m_lblSell, c0x, cy0 + DpiScale(3, dpi), lW, rowH);
-            place(m_edtSell, c0x + lW, cy0, c0w - lW - autoW - ctlGap, rowH);
-            place(m_btnAutoSell, c0x + c0w - autoW, cy0, autoW, rowH);
-            cy0 += rowH + ctlVGap;
+            const int duraAutoW = DpiScale(44, dpi);
+            place(m_lblDurability, hLvlX, cy0 + DpiScale(2, dpi), subLblW, sRowH);
+            place(m_edtDurability, hLvlX + subLblW, cy0, c0w - (hLvlX - c0x) - subLblW - duraAutoW - ctlGap, sRowH);
+            place(m_btnAutoDurability, c0x + c0w - duraAutoW, cy0, duraAutoW, sRowH);
+            cy0 += sRowH + vGap;
 
-            place(m_lblGearScore, c0x, cy0 + DpiScale(3, dpi), lW, rowH);
-            place(m_edtGearScore, c0x + lW, cy0, c0w - lW - autoW - ctlGap, rowH);
-            place(m_btnAutoGearScore, c0x + c0w - autoW, cy0, autoW, rowH);
-            cy0 += rowH + ctlVGap;
+            // Row 5: Sell Copper
+            const int autoW = DpiScale(44, dpi);
+            place(m_lblSell, c0x, cy0 + DpiScale(2, dpi), lW, sRowH);
+            place(m_edtSell, c0x + lW, cy0, c0w - lW - autoW - ctlGap, sRowH);
+            place(m_btnAutoSell, c0x + c0w - autoW, cy0, autoW, sRowH);
+            cy0 += sRowH + vGap;
 
-            place(m_lblDurability, c0x, cy0 + DpiScale(3, dpi), lW, rowH);
-            place(m_edtDurability, c0x + lW, cy0, c0w - lW - autoW - ctlGap, rowH);
-            place(m_btnAutoDurability, c0x + c0w - autoW, cy0, autoW, rowH);
-            cy0 += rowH + DpiScale(10, dpi);
+            // Row 6: Gear Score
+            place(m_lblGearScore, c0x, cy0 + DpiScale(2, dpi), lW, sRowH);
+            place(m_edtGearScore, c0x + lW, cy0, c0w - lW - autoW - ctlGap, sRowH);
+            place(m_btnAutoGearScore, c0x + c0w - autoW, cy0, autoW, sRowH);
+            cy0 += sRowH + DpiScale(5, dpi);
 
-            place(m_btnAutoAllEconomy, c0x, cy0, c0w, btnH);
-            cy0 += btnH + DpiScale(12, dpi);
+            // Row 7: Auto-Calculate All Economy
+            place(m_btnAutoAllEconomy, c0x, cy0, c0w, sRowH);
+            cy0 += sRowH + DpiScale(6, dpi);
 
-            const int flagW = (c0w - DpiScale(12, dpi)) / 3;
-            place(m_chkCash, c0x, cy0, flagW, rowH);
-            place(m_chkStorage, c0x + flagW + ctlGap, cy0, flagW, rowH);
-            place(m_chkWStorage, c0x + (flagW + ctlGap) * 2, cy0, c0w - (flagW + ctlGap) * 2, rowH);
-            cy0 += rowH + DpiScale(10, dpi);
+            // Row 8: Storage & Cash Flags
+            const int flagW = (c0w - DpiScale(8, dpi) * 2) / 3;
+            place(m_chkCash, c0x, cy0, flagW, sRowH);
+            place(m_chkStorage, c0x + flagW + ctlGap, cy0, flagW, sRowH);
+            place(m_chkWStorage, c0x + (flagW + ctlGap) * 2, cy0, c0w - (flagW + ctlGap) * 2, sRowH);
+            cy0 += sRowH + DpiScale(6, dpi);
 
-            const int prsW = (c0w - DpiScale(12, dpi)) / 3;
-            place(m_btnPresetEquip, c0x, cy0, prsW, btnH);
-            place(m_btnPresetStack, c0x + prsW + ctlGap, cy0, prsW, btnH);
-            place(m_btnPresetCash, c0x + (prsW + ctlGap) * 2, cy0, c0w - (prsW + ctlGap) * 2, btnH);
-            cy0 += btnH + DpiScale(10, dpi);
+            // Row 9: Presets
+            const int prsW = (c0w - DpiScale(8, dpi) * 2) / 3;
+            place(m_btnPresetEquip, c0x, cy0, prsW, sRowH);
+            place(m_btnPresetStack, c0x + prsW + ctlGap, cy0, prsW, sRowH);
+            place(m_btnPresetCash, c0x + (prsW + ctlGap) * 2, cy0, c0w - (prsW + ctlGap) * 2, sRowH);
+            cy0 += sRowH + DpiScale(6, dpi);
 
+            // Row 10: Dragon Jewel Studio
             const int linkBtnW = DpiScale(140, dpi);
             const int linkLblW = c0w - linkBtnW - ctlGap;
+            place(m_lblPropJewelInfo, c0x, cy0 + DpiScale(2, dpi), linkLblW, sRowH);
+            place(m_btnPropJewelStudio, c0x + linkLblW + ctlGap, cy0, linkBtnW, sRowH);
+            cy0 += sRowH + vGap;
 
-            place(m_lblPropJewelInfo, c0x, cy0 + DpiScale(3, dpi), linkLblW, rowH);
-            place(m_btnPropJewelStudio, c0x + linkLblW + ctlGap, cy0, linkBtnW, rowH);
-            cy0 += rowH + ctlVGap;
+            // Row 11: Set Item Studio
+            place(m_lblPropSetItemInfo, c0x, cy0 + DpiScale(2, dpi), linkLblW, sRowH);
+            place(m_btnPropSetItemStudio, c0x + linkLblW + ctlGap, cy0, linkBtnW, sRowH);
+            cy0 += sRowH + vGap;
 
-            place(m_lblPropSetItemInfo, c0x, cy0 + DpiScale(3, dpi), linkLblW, rowH);
-            place(m_btnPropSetItemStudio, c0x + linkLblW + ctlGap, cy0, linkBtnW, rowH);
-            cy0 += rowH + ctlVGap;
+            // Row 12: Enchant Studio
+            place(m_lblPropEnchantInfo, c0x, cy0 + DpiScale(2, dpi), linkLblW, sRowH);
+            place(m_btnPropEnchantStudio, c0x + linkLblW + ctlGap, cy0, linkBtnW, sRowH);
 
-            place(m_lblPropEnchantInfo, c0x, cy0 + DpiScale(3, dpi), linkLblW, rowH);
-            place(m_btnPropEnchantStudio, c0x + linkLblW + ctlGap, cy0, linkBtnW, rowH);
-
+            // Right Card: Job Matrix
             const int c1x = rcCard1.left + DpiScale(14, dpi);
             const int c1w = rcCard1.Width() - DpiScale(28, dpi);
-            int cy1 = rcCard1.top + DpiScale(26, dpi);
+            int cy1 = rcCard1.top + DpiScale(22, dpi);
 
-            place(m_lblJobs, c1x, cy1 + DpiScale(3, dpi), DpiScale(130, dpi), rowH);
-            place(m_edtJobs, c1x + DpiScale(134, dpi), cy1, c1w - DpiScale(134, dpi), rowH);
-            cy1 += rowH + DpiScale(10, dpi);
+            place(m_lblJobs, c1x, cy1 + DpiScale(2, dpi), DpiScale(120, dpi), sRowH);
+            place(m_edtJobs, c1x + DpiScale(124, dpi), cy1, c1w - DpiScale(124, dpi), sRowH);
+            cy1 += sRowH + DpiScale(8, dpi);
 
-            place(m_chkClassAll, c1x, cy1, c1w, rowH);
-            cy1 += rowH + DpiScale(8, dpi);
+            place(m_chkClassAll, c1x, cy1, c1w, sRowH);
+            cy1 += sRowH + DpiScale(6, dpi);
 
             const int colW = (c1w - DpiScale(10, dpi)) / 2;
             for (size_t i = 0; i < m_chkBaseClasses.size(); ++i) {
                 const int col = static_cast<int>(i % 2);
                 const int row = static_cast<int>(i / 2);
                 const int x = c1x + col * (colW + DpiScale(10, dpi));
-                const int y = cy1 + row * (rowH + DpiScale(4, dpi));
-                place(m_chkBaseClasses[i], x, y, colW, rowH);
+                const int y = cy1 + row * (sRowH + DpiScale(3, dpi));
+                place(m_chkBaseClasses[i], x, y, colW, sRowH);
             }
-            cy1 += 5 * (rowH + DpiScale(4, dpi)) + DpiScale(12, dpi);
+            cy1 += 5 * (sRowH + DpiScale(3, dpi)) + DpiScale(10, dpi);
 
-            place(m_lblJobsResolved, c1x, cy1, c1w, std::max<int>(60, static_cast<int>(rcCard1.bottom - DpiScale(14, dpi) - cy1)));
+            place(m_lblJobsResolved, c1x, cy1, c1w, std::max<int>(40, static_cast<int>(rcCard1.bottom - DpiScale(14, dpi) - cy1)));
             break;
         }
         case 1: { // Localization
@@ -1757,44 +1813,47 @@ void CMainFrame::LayoutControls(int cx, int cy) {
             place(m_edtDescResolved, lx0 + lW, ly0, lw0 - lW, liveH);
             break;
         }
-        case 2: { // Stats & Potentials (1..10)
+        case 2: { // Stats & Potentials (1..10) - Responsive button wrap and proportional columns
             CRect rcStatCard(contentX, contentY, contentX + contentW, contentY + contentH);
 
-            place(m_grpArchetypes, rcStatCard.left, rcStatCard.top, rcStatCard.Width(), DpiScale(80, dpi));
-            place(m_grpStateRows, rcStatCard.left, rcStatCard.top + DpiScale(84, dpi), rcStatCard.Width(), rcStatCard.Height() - DpiScale(84, dpi));
+            const int archGrpH = DpiScale(78, dpi);
+            place(m_grpArchetypes, rcStatCard.left, rcStatCard.top, rcStatCard.Width(), archGrpH);
+            place(m_grpStateRows, rcStatCard.left, rcStatCard.top + archGrpH + DpiScale(4, dpi), rcStatCard.Width(), rcStatCard.Height() - archGrpH - DpiScale(4, dpi));
 
             const int sx = rcStatCard.left + DpiScale(14, dpi);
             const int sw = rcStatCard.Width() - DpiScale(28, dpi);
             int sy = rcStatCard.top + DpiScale(20, dpi);
 
+            // Row 1: Archetypes & Curves
             place(m_lblArchetype, sx, sy + DpiScale(3, dpi), DpiScale(84, dpi), rowH);
-            const int archW = DpiScale(310, dpi);
+            const int archW = std::clamp(sw * 34 / 100, DpiScale(220, dpi), DpiScale(320, dpi));
             place(m_cmbArchetype, sx + DpiScale(88, dpi), sy, archW, dropH);
-            place(m_btnApplyArchetype, sx + DpiScale(88, dpi) + archW + ctlGap, sy, DpiScale(140, dpi), rowH);
-            place(m_btnStatsAutoCurve, sx + DpiScale(88, dpi) + archW + ctlGap + DpiScale(146, dpi), sy, DpiScale(170, dpi), rowH);
-            sy += rowH + ctlGap;
+            place(m_btnApplyArchetype, sx + DpiScale(88, dpi) + archW + ctlGap, sy, DpiScale(130, dpi), rowH);
+            place(m_btnStatsAutoCurve, sx + DpiScale(88, dpi) + archW + ctlGap + DpiScale(136, dpi), sy, DpiScale(160, dpi), rowH);
+            sy += rowH + DpiScale(4, dpi);
 
-            const int scaleBtnW = DpiScale(68, dpi);
+            // Row 2: Multipliers and helper buttons (Responsive wrap)
+            const int scaleBtnW = DpiScale(58, dpi);
             int scX = sx;
             for (size_t s = 0; s < 5; ++s) {
-                place(m_btnStatScales[s], scX, sy, scaleBtnW, DpiScale(24, dpi));
+                place(m_btnStatScales[s], scX, sy, scaleBtnW, DpiScale(22, dpi));
                 scX += scaleBtnW + ctlGap;
             }
-            place(m_btnStatsSpread15, scX, sy, DpiScale(110, dpi), DpiScale(24, dpi)); scX += DpiScale(116, dpi);
-            place(m_btnStatsMinToMax, scX, sy, DpiScale(84, dpi), DpiScale(24, dpi)); scX += DpiScale(90, dpi);
-            place(m_btnStatsProbsFull, scX, sy, DpiScale(84, dpi), DpiScale(24, dpi)); scX += DpiScale(90, dpi);
-            place(m_btnStatsCompact, scX, sy, DpiScale(76, dpi), DpiScale(24, dpi)); scX += DpiScale(82, dpi);
-            place(m_btnStatsCopy, scX, sy, DpiScale(82, dpi), DpiScale(24, dpi)); scX += DpiScale(88, dpi);
-            place(m_btnStatsPaste, scX, sy, DpiScale(70, dpi), DpiScale(24, dpi)); scX += DpiScale(76, dpi);
-            place(m_btnStatsClear, scX, sy, DpiScale(66, dpi), DpiScale(24, dpi));
+            place(m_btnStatsSpread15, scX, sy, DpiScale(100, dpi), DpiScale(22, dpi)); scX += DpiScale(106, dpi);
+            place(m_btnStatsMinToMax, scX, sy, DpiScale(80, dpi), DpiScale(22, dpi)); scX += DpiScale(86, dpi);
+            place(m_btnStatsProbsFull, scX, sy, DpiScale(80, dpi), DpiScale(22, dpi)); scX += DpiScale(86, dpi);
+            place(m_btnStatsCompact, scX, sy, DpiScale(72, dpi), DpiScale(22, dpi)); scX += DpiScale(78, dpi);
+            place(m_btnStatsCopy, scX, sy, DpiScale(72, dpi), DpiScale(22, dpi)); scX += DpiScale(78, dpi);
+            place(m_btnStatsPaste, scX, sy, DpiScale(70, dpi), DpiScale(22, dpi)); scX += DpiScale(76, dpi);
+            place(m_btnStatsClear, scX, sy, DpiScale(64, dpi), DpiScale(22, dpi));
 
-            sy = rcStatCard.top + DpiScale(104, dpi);
+            sy = rcStatCard.top + archGrpH + DpiScale(22, dpi);
 
-            const int slotW = DpiScale(34, dpi);
-            const int probW = DpiScale(72, dpi);
-            const int valW = DpiScale(110, dpi);
+            const int slotW = DpiScale(32, dpi);
+            const int probW = DpiScale(70, dpi);
             const int sGap = DpiScale(8, dpi);
-            const int typeW = std::max(DpiScale(160, dpi), sw - slotW - probW - valW * 2 - sGap * 4);
+            const int typeW = std::clamp((sw - slotW - probW - sGap * 5) * 42 / 100, DpiScale(200, dpi), DpiScale(340, dpi));
+            const int valW = std::max(DpiScale(90, dpi), (sw - slotW - typeW - probW - sGap * 5) / 2);
 
             const int sx0 = sx;
             const int sx1 = sx0 + slotW + sGap;
@@ -1809,22 +1868,22 @@ void CMainFrame::LayoutControls(int cx, int cy) {
             place(m_lblStatHdrMax, sx4, sy, valW, DpiScale(18, dpi));
             sy += DpiScale(20, dpi);
 
-            const int statRowH = DpiScale(24, dpi);
+            const int statRowH = DpiScale(23, dpi);
             for (size_t i = 0; i < Data::kStateSlotCount; ++i) {
                 auto& rw = m_statWidgets[i];
-                place(rw.lblSlot, sx0, sy + DpiScale(3, dpi), slotW, statRowH);
+                place(rw.lblSlot, sx0, sy + DpiScale(2, dpi), slotW, statRowH);
                 place(rw.cmbType, sx1, sy, typeW, dropH);
                 place(rw.edtProb, sx2, sy, probW, statRowH);
                 place(rw.edtMin, sx3, sy, valW, statRowH);
                 place(rw.edtMax, sx4, sy, valW, statRowH);
-                sy += statRowH + DpiScale(4, dpi);
+                sy += statRowH + DpiScale(3, dpi);
             }
             break;
         }
-        case 3: { // 3D & Visuals
+        case 3: { // 3D & Visuals - Responsive top bar and donor cloner
             CRect rc3dCard(contentX, contentY, contentX + contentW, contentY + contentH);
 
-            const int clonerH = DpiScale(42, dpi);
+            const int clonerH = DpiScale(44, dpi);
             place(m_grpViewport, rc3dCard.left, rc3dCard.top, rc3dCard.Width(), rc3dCard.Height() - clonerH - ctlGap);
             place(m_grpVisualCloner, rc3dCard.left, rc3dCard.bottom - clonerH, rc3dCard.Width(), clonerH);
 
@@ -1833,28 +1892,40 @@ void CMainFrame::LayoutControls(int cx, int cy) {
             int my = rc3dCard.top + DpiScale(22, dpi);
 
             place(m_lblRenderMode, mx, my + DpiScale(3, dpi), DpiScale(62, dpi), rowH);
-            const int modeW = DpiScale(260, dpi);
+            const int modeW = std::clamp(mw * 28 / 100, DpiScale(180, dpi), DpiScale(260, dpi));
             place(m_cmbRenderMode, mx + DpiScale(66, dpi), my, modeW, dropH);
 
-            int cx3 = mx + DpiScale(66, dpi) + modeW + DpiScale(10, dpi);
-            place(m_chkAutoSpin, cx3, my + DpiScale(3, dpi), DpiScale(140, dpi), DpiScale(22, dpi)); cx3 += DpiScale(146, dpi);
-            place(m_btnZoomIn3D, cx3, my, DpiScale(72, dpi), rowH); cx3 += DpiScale(78, dpi);
-            place(m_btnZoomOut3D, cx3, my, DpiScale(72, dpi), rowH); cx3 += DpiScale(78, dpi);
-            place(m_btnResetCam, cx3, my, DpiScale(105, dpi), rowH); cx3 += DpiScale(112, dpi);
-            place(m_btnOpenIconAtlas, cx3, my, DpiScale(150, dpi), rowH);
+            int cx3 = mx + DpiScale(66, dpi) + modeW + DpiScale(8, dpi);
+            const int spinW = DpiScale(110, dpi);
+            place(m_chkAutoSpin, cx3, my + DpiScale(2, dpi), spinW, DpiScale(22, dpi)); cx3 += spinW + ctlGap;
+
+            const int zoomW = DpiScale(64, dpi);
+            const int resetW = DpiScale(86, dpi);
+            const int atlasW = DpiScale(125, dpi);
+            place(m_btnZoomIn3D, cx3, my, zoomW, rowH); cx3 += zoomW + ctlGap;
+            place(m_btnZoomOut3D, cx3, my, zoomW, rowH); cx3 += zoomW + ctlGap;
+            place(m_btnResetCam, cx3, my, resetW, rowH); cx3 += resetW + ctlGap;
+            if (cx3 + atlasW <= mx + mw) {
+                place(m_btnOpenIconAtlas, cx3, my, atlasW, rowH);
+            } else {
+                place(m_btnOpenIconAtlas, mx + mw - atlasW, my, atlasW, rowH);
+            }
             my += rowH + DpiScale(8, dpi);
 
             const int clonerY = rc3dCard.bottom - clonerH + DpiScale(14, dpi);
             place(m_previewWnd, mx, my, mw, std::max<int>(60, static_cast<int>(rc3dCard.bottom - clonerH - DpiScale(10, dpi) - my)));
 
-            place(m_lblDonorId, mx, clonerY + DpiScale(3, dpi), DpiScale(115, dpi), rowH);
-            const int donEdtW = DpiScale(110, dpi);
-            place(m_edtDonorId, mx + DpiScale(118, dpi), clonerY, donEdtW, rowH);
-            int clX = mx + DpiScale(118, dpi) + donEdtW + DpiScale(8, dpi);
-            place(m_btnUseSelAsDonor, clX, clonerY, DpiScale(150, dpi), btnH); clX += DpiScale(158, dpi);
-            place(m_btnCloneVisualBoth, clX, clonerY, DpiScale(140, dpi), btnH); clX += DpiScale(148, dpi);
-            place(m_btnCloneSkinOnly, clX, clonerY, DpiScale(140, dpi), btnH); clX += DpiScale(148, dpi);
-            place(m_btnCloneIconOnly, clX, clonerY, DpiScale(140, dpi), btnH);
+            place(m_lblDonorId, mx, clonerY + DpiScale(3, dpi), DpiScale(100, dpi), rowH);
+            const int donEdtW = DpiScale(90, dpi);
+            place(m_edtDonorId, mx + DpiScale(104, dpi), clonerY, donEdtW, rowH);
+
+            const int remClonerW = mw - DpiScale(104, dpi) - donEdtW - ctlGap;
+            const int clBtnW = std::clamp(remClonerW / 4 - ctlGap, DpiScale(90, dpi), DpiScale(140, dpi));
+            int clX = mx + DpiScale(104, dpi) + donEdtW + ctlGap;
+            place(m_btnUseSelAsDonor, clX, clonerY, clBtnW, btnH); clX += clBtnW + ctlGap;
+            place(m_btnCloneVisualBoth, clX, clonerY, clBtnW, btnH); clX += clBtnW + ctlGap;
+            place(m_btnCloneSkinOnly, clX, clonerY, clBtnW, btnH); clX += clBtnW + ctlGap;
+            place(m_btnCloneIconOnly, clX, clonerY, mw - (clX - mx), btnH);
             break;
         }
         case 4: { // Raw DNT Inspector
@@ -1974,7 +2045,7 @@ void CMainFrame::LayoutControls(int cx, int cy) {
             place(m_btnRunBatchEdit, cx0, rcCardC.bottom - DpiScale(12, dpi) - btnH, cw0, btnH);
             break;
         }
-        case 6: { // Tools, Audit & JSON I/O
+        case 6: { // Tools, Audit & JSON I/O - Responsive 2-column dashboard in left card
             const int cardGap = DpiScale(10, dpi);
             const int cardW = (contentW - cardGap) / 2;
             CRect rcCardL(contentX, contentY, contentX + cardW, contentY + contentH);
@@ -1987,26 +2058,33 @@ void CMainFrame::LayoutControls(int cx, int cy) {
             const int tw0 = rcCardL.Width() - DpiScale(28, dpi);
             int ty0 = rcCardL.top + DpiScale(24, dpi);
 
-            place(m_btnToolAudit, tx0, ty0, tw0, btnH); ty0 += btnH + DpiScale(8, dpi);
-            place(m_btnToolVerify, tx0, ty0, tw0, btnH); ty0 += btnH + DpiScale(8, dpi);
-            place(m_btnOpenDragonJewelStudio, tx0, ty0, tw0, btnH); ty0 += btnH + DpiScale(8, dpi);
-            place(m_btnOpenSetItemStudio, tx0, ty0, tw0, btnH); ty0 += btnH + DpiScale(8, dpi);
-            place(m_btnOpenEnchantStudio, tx0, ty0, tw0, btnH); ty0 += btnH + DpiScale(8, dpi);
+            // Responsive 2-column grid inside m_grpTools
+            const int colW6 = (tw0 - ctlGap) / 2;
+            const int col1X = tx0;
+            const int col2X = tx0 + colW6 + ctlGap;
 
-            const int halfTw = (tw0 - DpiScale(8, dpi)) / 2;
-            place(m_btnToolClearCache, tx0, ty0, halfTw, btnH);
-            place(m_btnToolSnapshot, tx0 + halfTw + DpiScale(8, dpi), ty0, tw0 - halfTw - DpiScale(8, dpi), btnH);
-            ty0 += btnH + DpiScale(8, dpi);
+            // Column 1: Diagnostics & Studios
+            int tyCol1 = ty0;
+            place(m_btnToolAudit, col1X, tyCol1, colW6, btnH); tyCol1 += btnH + DpiScale(6, dpi);
+            place(m_btnToolVerify, col1X, tyCol1, colW6, btnH); tyCol1 += btnH + DpiScale(6, dpi);
+            place(m_btnOpenDragonJewelStudio, col1X, tyCol1, colW6, btnH); tyCol1 += btnH + DpiScale(6, dpi);
+            place(m_btnOpenSetItemStudio, col1X, tyCol1, colW6, btnH); tyCol1 += btnH + DpiScale(6, dpi);
+            place(m_btnOpenEnchantStudio, col1X, tyCol1, colW6, btnH); tyCol1 += btnH + DpiScale(6, dpi);
+            place(m_btnToolLogs, col1X, tyCol1, colW6, btnH);
 
-            place(m_btnToolLogs, tx0, ty0, tw0, btnH); ty0 += btnH + DpiScale(16, dpi);
+            // Column 2: Cache, Snapshots & JSON Packs
+            int tyCol2 = ty0;
+            place(m_btnToolClearCache, col2X, tyCol2, colW6, btnH); tyCol2 += btnH + DpiScale(6, dpi);
+            place(m_btnToolSnapshot, col2X, tyCol2, colW6, btnH); tyCol2 += btnH + DpiScale(6, dpi);
+            place(m_btnJsonExpSel, col2X, tyCol2, colW6, btnH); tyCol2 += btnH + DpiScale(6, dpi);
+            place(m_btnJsonExpMod, col2X, tyCol2, colW6, btnH); tyCol2 += btnH + DpiScale(6, dpi);
+            place(m_btnJsonExpFilt, col2X, tyCol2, colW6, btnH); tyCol2 += btnH + DpiScale(6, dpi);
 
-            place(m_btnJsonExpSel, tx0, ty0, tw0, btnH); ty0 += btnH + DpiScale(8, dpi);
-            place(m_btnJsonExpMod, tx0, ty0, tw0, btnH); ty0 += btnH + DpiScale(8, dpi);
-            place(m_btnJsonExpFilt, tx0, ty0, tw0, btnH); ty0 += btnH + DpiScale(8, dpi);
+            const int halfColW = (colW6 - ctlGap) / 2;
+            place(m_btnJsonImpFile, col2X, tyCol2, halfColW, btnH);
+            place(m_btnJsonImpClip, col2X + halfColW + ctlGap, tyCol2, colW6 - halfColW - ctlGap, btnH);
 
-            place(m_btnJsonImpFile, tx0, ty0, halfTw, btnH);
-            place(m_btnJsonImpClip, tx0 + halfTw + DpiScale(8, dpi), ty0, tw0 - halfTw - DpiScale(8, dpi), btnH);
-
+            // Right Card: Modified items list
             const int mx0 = rcCardR.left + DpiScale(14, dpi);
             const int mw0 = rcCardR.Width() - DpiScale(28, dpi);
             int my0 = rcCardR.top + DpiScale(24, dpi);
@@ -2020,7 +2098,7 @@ void CMainFrame::LayoutControls(int cx, int cy) {
             place(m_btnModUndo, mx0 + halfMw + DpiScale(8, dpi), btmModY, mw0 - halfMw - DpiScale(8, dpi), btmModH);
             break;
         }
-        case 7: { // Charm & Gacha Box Probability Studio
+        case 7: { // Charm & Gacha Box Probability Studio - Proportional simulator heights
             const int leftPanelW = contentW * 62 / 100;
             const int rightPanelW = contentW - leftPanelW - DpiScale(10, dpi);
             const int leftX = contentX;
@@ -2032,19 +2110,19 @@ void CMainFrame::LayoutControls(int cx, int cy) {
 
             const int hx7 = leftX + DpiScale(12, dpi);
             const int hy7 = contentY + DpiScale(22, dpi);
-            const int selLblW = DpiScale(140, dpi);
+            const int selLblW = DpiScale(130, dpi);
             place(m_lblCharmSelector, hx7, hy7 + DpiScale(3, dpi), selLblW, rowH);
-            const int syncBtnW = DpiScale(130, dpi);
-            const int refBtnW = DpiScale(68, dpi);
-            const int expBtnW = DpiScale(92, dpi);
+            const int syncBtnW = DpiScale(120, dpi);
+            const int refBtnW = DpiScale(64, dpi);
+            const int expBtnW = DpiScale(86, dpi);
             const int cmbW = leftPanelW - DpiScale(24, dpi) - selLblW - syncBtnW - refBtnW - expBtnW - ctlGap * 4;
-            int curX = hx7 + selLblW + ctlGap;
-            place(m_cmbCharmSelector, curX, hy7, cmbW, dropH); curX += cmbW + ctlGap;
-            place(m_btnCharmSyncItem, curX, hy7, syncBtnW, btnH); curX += syncBtnW + ctlGap;
-            place(m_btnCharmRefresh, curX, hy7, refBtnW, btnH); curX += refBtnW + ctlGap;
-            place(m_btnCharmExportCsv, curX, hy7, expBtnW, btnH);
+            int curHx7 = hx7 + selLblW + ctlGap;
+            place(m_cmbCharmSelector, curHx7, hy7, cmbW, dropH); curHx7 += cmbW + ctlGap;
+            place(m_btnCharmSyncItem, curHx7, hy7, syncBtnW, btnH); curHx7 += syncBtnW + ctlGap;
+            place(m_btnCharmRefresh, curHx7, hy7, refBtnW, btnH); curHx7 += refBtnW + ctlGap;
+            place(m_btnCharmExportCsv, curHx7, hy7, expBtnW, btnH);
 
-            // Left Section Main: Rewards Table Card
+            // Left Section Bottom: Rewards List
             const int tblY = contentY + hdrH7 + ctlGap;
             const int tblH = contentH - hdrH7 - ctlGap;
             place(m_grpCharmTable, leftX, tblY, leftPanelW, tblH);
@@ -2052,16 +2130,16 @@ void CMainFrame::LayoutControls(int cx, int cy) {
                   leftPanelW - DpiScale(20, dpi), tblH - DpiScale(30, dpi));
 
             // Right Section: Analytics, Simulation, Rebalancing
-            const int statCardH = DpiScale(140, dpi);
-            const int balCardH = DpiScale(150, dpi);
+            const int statCardH = std::clamp(contentH * 24 / 100, DpiScale(105, dpi), DpiScale(135, dpi));
+            const int balCardH = std::clamp(contentH * 26 / 100, DpiScale(110, dpi), DpiScale(140, dpi));
             const int simCardH = contentH - statCardH - balCardH - ctlGap * 2;
 
             // 1. Drop Analytics Card
             place(m_grpCharmStats, rightX, contentY, rightPanelW, statCardH);
-            place(m_lblCharmStatSummary, rightX + DpiScale(12, dpi), contentY + DpiScale(22, dpi),
-                  rightPanelW - DpiScale(24, dpi), DpiScale(44, dpi));
-            place(m_lblCharmStatOdds, rightX + DpiScale(12, dpi), contentY + DpiScale(68, dpi),
-                  rightPanelW - DpiScale(24, dpi), DpiScale(64, dpi));
+            place(m_lblCharmStatSummary, rightX + DpiScale(12, dpi), contentY + DpiScale(20, dpi),
+                  rightPanelW - DpiScale(24, dpi), DpiScale(36, dpi));
+            place(m_lblCharmStatOdds, rightX + DpiScale(12, dpi), contentY + DpiScale(58, dpi),
+                  rightPanelW - DpiScale(24, dpi), statCardH - DpiScale(62, dpi));
 
             // 2. Monte Carlo Simulator Card
             const int simY = contentY + statCardH + ctlGap;
@@ -2070,35 +2148,35 @@ void CMainFrame::LayoutControls(int cx, int cy) {
             const int sw7 = rightPanelW - DpiScale(24, dpi);
             int sy7 = simY + DpiScale(22, dpi);
 
-            place(m_lblSimTitle, sx7, sy7 + DpiScale(3, dpi), DpiScale(90, dpi), rowH);
-            const int pullBtnW = (sw7 - DpiScale(90, dpi) - ctlGap * 6) / 6;
-            int px7 = sx7 + DpiScale(94, dpi);
+            place(m_lblSimTitle, sx7, sy7 + DpiScale(3, dpi), DpiScale(84, dpi), rowH);
+            const int pullBtnW = (sw7 - DpiScale(84, dpi) - ctlGap * 6) / 6;
+            int px7 = sx7 + DpiScale(88, dpi);
             place(m_btnSimPull1, px7, sy7, pullBtnW, btnH); px7 += pullBtnW + ctlGap;
             place(m_btnSimPull10, px7, sy7, pullBtnW, btnH); px7 += pullBtnW + ctlGap;
             place(m_btnSimPull100, px7, sy7, pullBtnW, btnH); px7 += pullBtnW + ctlGap;
             place(m_btnSimPull1000, px7, sy7, pullBtnW, btnH); px7 += pullBtnW + ctlGap;
-            place(m_btnSimJackpot, px7, sy7, pullBtnW + DpiScale(16, dpi), btnH); px7 += pullBtnW + DpiScale(16, dpi) + ctlGap;
+            place(m_btnSimJackpot, px7, sy7, pullBtnW + DpiScale(12, dpi), btnH); px7 += pullBtnW + DpiScale(12, dpi) + ctlGap;
             place(m_btnSimReset, px7, sy7, sw7 - (px7 - sx7), btnH);
-            sy7 += btnH + DpiScale(8, dpi);
+            sy7 += btnH + DpiScale(6, dpi);
 
-            place(m_edtSimLog, sx7, sy7, sw7, simCardH - (sy7 - simY) - DpiScale(10, dpi));
+            place(m_edtSimLog, sx7, sy7, sw7, std::max(40, simCardH - (sy7 - simY) - DpiScale(8, dpi)));
 
             // 3. Drop Weight Tuning Card
             const int balY = simY + simCardH + ctlGap;
             place(m_grpCharmBalance, rightX, balY, rightPanelW, balCardH);
             const int bx7 = rightX + DpiScale(12, dpi);
             const int bw7 = rightPanelW - DpiScale(24, dpi);
-            int by7 = balY + DpiScale(24, dpi);
+            int by7 = balY + DpiScale(22, dpi);
 
-            place(m_lblCharmTargetWeight, bx7, by7 + DpiScale(3, dpi), DpiScale(140, dpi), rowH);
-            const int normBtnW = DpiScale(150, dpi);
-            place(m_edtCharmTargetWeight, bx7 + DpiScale(144, dpi), by7, bw7 - DpiScale(144, dpi) - normBtnW - ctlGap, rowH);
+            place(m_lblCharmTargetWeight, bx7, by7 + DpiScale(3, dpi), DpiScale(130, dpi), rowH);
+            const int normBtnW = DpiScale(140, dpi);
+            place(m_edtCharmTargetWeight, bx7 + DpiScale(134, dpi), by7, bw7 - DpiScale(134, dpi) - normBtnW - ctlGap, rowH);
             place(m_btnCharmNormalize, bx7 + bw7 - normBtnW, by7, normBtnW, btnH);
-            by7 += rowH + DpiScale(10, dpi);
+            by7 += rowH + DpiScale(8, dpi);
 
-            place(m_lblCharmEditWeight, bx7, by7 + DpiScale(3, dpi), DpiScale(140, dpi), rowH);
-            const int applyBtnW = DpiScale(150, dpi);
-            place(m_edtCharmEditWeight, bx7 + DpiScale(144, dpi), by7, bw7 - DpiScale(144, dpi) - applyBtnW - ctlGap, rowH);
+            place(m_lblCharmEditWeight, bx7, by7 + DpiScale(3, dpi), DpiScale(130, dpi), rowH);
+            const int applyBtnW = DpiScale(140, dpi);
+            place(m_edtCharmEditWeight, bx7 + DpiScale(134, dpi), by7, bw7 - DpiScale(134, dpi) - applyBtnW - ctlGap, rowH);
             place(m_btnCharmApplyWeight, bx7 + bw7 - applyBtnW, by7, applyBtnW, btnH);
             break;
         }
@@ -2114,11 +2192,12 @@ void CMainFrame::LayoutControls(int cx, int cy) {
                        &m_grpBatchEdit, &m_grpTools, &m_grpJsonPacks, &m_grpModDrafts,
                        &m_grpCharmHeader, &m_grpCharmTable, &m_grpCharmStats, &m_grpCharmSim, &m_grpCharmBalance }) {
         if (grp && grp->GetSafeHwnd()) {
-            ::SetWindowPos(grp->GetSafeHwnd(), HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            ::SetWindowPos(grp->GetSafeHwnd(), HWND_BOTTOM, 0, 0, 0, 0,
+                           SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOCOPYBITS);
         }
     }
 
-    Invalidate(FALSE);
+    RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 }
 
 void CMainFrame::SetWorkspaceControlsEnabled(bool enabled) {

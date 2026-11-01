@@ -318,7 +318,7 @@ END_MESSAGE_MAP()
 
 BOOL CFlatGroupBox::Create(LPCTSTR lpszCaption, DWORD dwStyle, const RECT& rect, CWnd* pParentWnd, UINT nID) {
 
-    return CButton::Create(lpszCaption, dwStyle | WS_CLIPSIBLINGS, rect, pParentWnd, nID);
+    return CButton::Create(lpszCaption, (dwStyle | WS_CHILD) & ~WS_CLIPSIBLINGS, rect, pParentWnd, nID);
 
 }
 
@@ -328,7 +328,7 @@ void CFlatGroupBox::PreSubclassWindow() {
 
     CButton::PreSubclassWindow();
 
-    ModifyStyle(0, WS_CLIPSIBLINGS);
+    ModifyStyle(WS_CLIPSIBLINGS, 0);
 
     ::SetWindowTheme(GetSafeHwnd(), L"", L"");
 
@@ -336,10 +336,11 @@ void CFlatGroupBox::PreSubclassWindow() {
 
 
 
-BOOL CFlatGroupBox::OnEraseBkgnd(CDC* /*pDC*/) {
-
+BOOL CFlatGroupBox::OnEraseBkgnd(CDC* pDC) {
+    CRect rc;
+    GetClientRect(&rc);
+    pDC->FillSolidRect(&rc, Theme::kChrome);
     return TRUE;
-
 }
 
 
@@ -362,7 +363,7 @@ void CFlatGroupBox::OnPaint() {
 
     if (rc.Width() <= 0 || rc.Height() <= 0) return;
 
-
+    dc.FillSolidRect(&rc, Theme::kChrome);
 
     CString text;
 
